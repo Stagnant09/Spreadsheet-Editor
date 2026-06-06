@@ -1,5 +1,7 @@
 # Spreadsheet Editor
 
+<img width="1013" height="651" alt="image" src="https://github.com/user-attachments/assets/6c1544dc-8ce1-4ad7-9f1d-9458ef3ec2e6" />
+
 A cross-platform spreadsheet application built with Kotlin Multiplatform and a high-performance calculation engine written in C.
 
 ## Project Overview
