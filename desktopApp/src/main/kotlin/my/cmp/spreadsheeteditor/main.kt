@@ -44,6 +44,9 @@ import io.github.composefluent.component.TextField
 import io.github.composefluent.component.TextFieldColor
 import io.github.composefluent.component.TextFieldDefaults
 import io.github.composefluent.component.commandBarButtonSize
+import io.github.composefluent.icons.filled.Add
+import io.github.composefluent.icons.filled.Edit
+import io.github.composefluent.icons.filled.Save
 import io.github.composefluent.icons.regular.*
 import my.cmp.spreadsheeteditor.models.Cell
 import my.cmp.spreadsheeteditor.models.Cell.Companion.displayValue
@@ -54,6 +57,7 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.*
+import my.cmp.spreadsheeteditor.utils.IGNORE_CHARS
 
 // ─── Grid constants ───────────────────────────────────────────────────────────
 private const val ROWS = 50
@@ -163,15 +167,7 @@ fun SpreadsheetGrid(
                                     .onKeyEvent { event ->                          // intercept keystrokes
                                         if (isSelected &&
                                             event.type == KeyEventType.KeyDown &&
-                                            event.key != Key.Enter &&
-                                            event.key != Key.Escape &&
-                                            event.key != Key.Tab &&
-                                            event.key != Key.ShiftLeft &&
-                                            event.key != Key.ShiftRight &&
-                                            event.key != Key.CtrlLeft &&
-                                            event.key != Key.CtrlRight &&
-                                            event.key != Key.AltLeft &&
-                                            event.key != Key.AltRight &&
+                                            !IGNORE_CHARS.contains(event.key) &&
                                             event.utf16CodePoint > 0x1F             // printable chars only
                                         ) {
                                             val char = if (event.isShiftPressed) {
@@ -355,7 +351,7 @@ fun main() = application {
                                     RibbonEntry(
                                         icon = {
                                             Icon(
-                                                imageVector = io.github.composefluent.icons.Icons.Default.Add,
+                                                imageVector = io.github.composefluent.icons.Icons.Filled.Add,
                                                 "New",
                                                 tint = ColText,
                                                 modifier = Modifier.size(32.dp)
@@ -375,7 +371,7 @@ fun main() = application {
                                     RibbonEntry(
                                         icon = {
                                             Icon(
-                                                io.github.composefluent.icons.Icons.Default.Edit,
+                                                io.github.composefluent.icons.Icons.Filled.Edit,
                                                 "Open",
                                                 tint = ColText,
                                                 modifier = Modifier.size(32.dp)
@@ -393,7 +389,7 @@ fun main() = application {
                                     RibbonEntry(
                                         icon = {
                                             Icon(
-                                                io.github.composefluent.icons.Icons.Default.Save,
+                                                io.github.composefluent.icons.Icons.Filled.Save,
                                                 "Save",
                                                 tint = ColText,
                                                 modifier = Modifier.size(32.dp)
@@ -685,7 +681,6 @@ fun main() = application {
                         formulaText = value
                     },
                     onKeyStartTyping = { char ->
-                        // Seed the cell with the pressed character, then let onCellEdited take over
                         val row = selectedRow;
                         val col = selectedCol
                         val seeded = char.toString()
