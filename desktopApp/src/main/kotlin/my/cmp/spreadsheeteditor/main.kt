@@ -58,6 +58,7 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.*
 import my.cmp.spreadsheeteditor.utils.IGNORE_CHARS
+import my.cmp.spreadsheeteditor.utils.NAVIGATION_CHARS
 
 // ─── Grid constants ───────────────────────────────────────────────────────────
 private const val ROWS = 50
@@ -80,6 +81,15 @@ fun SpreadsheetGrid(
 ) {
     val colScrollState = rememberScrollState()
     val rowScrollState = rememberScrollState()
+
+    fun navigate(key: Key){
+        when (key) {
+            Key.DirectionUp -> onCellSelected(selectedRow - 1, selectedCol)
+            Key.DirectionDown -> onCellSelected(selectedRow + 1, selectedCol)
+            Key.DirectionLeft -> onCellSelected(selectedRow, selectedCol - 1)
+            Key.DirectionRight -> onCellSelected(selectedRow, selectedCol + 1)
+        }
+    }
 
     Column(modifier = modifier.background(ColBg)) {
 
@@ -165,6 +175,9 @@ fun SpreadsheetGrid(
                                     .border(BorderStroke(0.5.dp, ColGridBorder))
                                     .clickable { onCellSelected(rowIdx, colIdx) }
                                     .onKeyEvent { event ->                          // intercept keystrokes
+                                        if (NAVIGATION_CHARS.contains(event.key)) {
+                                            navigate(event.key)
+                                        }
                                         if (isSelected &&
                                             event.type == KeyEventType.KeyDown &&
                                             !IGNORE_CHARS.contains(event.key) &&
@@ -655,6 +668,7 @@ fun main() = application {
                     selectedRow = selectedRow,
                     selectedCol = selectedCol,
                     onCellSelected = { row, col ->
+                        if (row < 0 || col < 0) return@SpreadsheetGrid
                         selectedRow = row
                         selectedCol = col
                         syncFormulaBar()

@@ -17,3 +17,10 @@ val IGNORE_CHARS = listOf(
     Key.Enter,
     Key.Tab
 )
+
+val NAVIGATION_CHARS = listOf(
+    Key.DirectionUp,
+    Key.DirectionDown,
+    Key.DirectionLeft,
+    Key.DirectionRight
+)
