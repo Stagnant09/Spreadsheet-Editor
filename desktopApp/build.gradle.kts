@@ -23,12 +23,21 @@ dependencies {
 
 val cmakeConfigure = tasks.register<Exec>("cmakeConfigure") {
     workingDir = rootDir
-    commandLine(
+    val osName = System.getProperty("os.name").lowercase()
+    val isWindows = osName.contains("windows")
+
+    val cmakeArgs = mutableListOf(
         "cmake", "-S", ".", "-B", "build/native",
-        "-G", "MinGW Makefiles",
-        "-DCMAKE_BUILD_TYPE=Release",
-        "-DCMAKE_C_COMPILER=C:/Qt/Tools/mingw1310_64/bin/gcc.exe"
+        "-DCMAKE_BUILD_TYPE=Release"
     )
+
+    if (isWindows) {
+        cmakeArgs.add("-G")
+        cmakeArgs.add("MinGW Makefiles")
+        cmakeArgs.add("-DCMAKE_C_COMPILER=C:/Qt/Tools/mingw1310_64/bin/gcc.exe")
+    }
+
+    commandLine(cmakeArgs)
 }
 
 val cmakeBuild = tasks.register<Exec>("cmakeBuild") {

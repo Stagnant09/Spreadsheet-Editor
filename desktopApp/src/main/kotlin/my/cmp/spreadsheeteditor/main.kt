@@ -337,8 +337,11 @@ fun main() = application {
                         )
                     }
                 ) { _: DecoratedWindowState ->
+                    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
                     Row(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 78.dp),
+                        modifier = Modifier
+                            .fillMaxSize(if (isWindows) 1f else 0.9f)
+                            .padding(horizontal = if (isWindows) 78.dp else 0.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("Spreadsheet Editor", color = Color.White, fontWeight = FontWeight.SemiBold)
