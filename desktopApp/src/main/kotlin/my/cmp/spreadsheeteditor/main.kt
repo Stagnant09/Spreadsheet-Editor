@@ -6,10 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,22 +28,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.application
-import androidx.compose.ui.zIndex
 import dev.nucleusframework.window.DecoratedWindow
 import dev.nucleusframework.window.DecoratedWindowState
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar
 import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.Icon
-import io.github.composefluent.component.ListItemDefaults
-import io.github.composefluent.component.MenuFlyout
-import io.github.composefluent.component.MenuFlyoutContainer
-import io.github.composefluent.component.MenuFlyoutItem
-import io.github.composefluent.component.SubtleButton
-import io.github.composefluent.component.TextField
-import io.github.composefluent.component.TextFieldColor
-import io.github.composefluent.component.TextFieldDefaults
-import io.github.composefluent.component.commandBarButtonSize
+import io.github.composefluent.component.*
 import io.github.composefluent.icons.filled.Add
 import io.github.composefluent.icons.filled.Edit
 import io.github.composefluent.icons.filled.Save
@@ -84,7 +72,7 @@ fun SpreadsheetGrid(
     val colScrollState = rememberScrollState()
     val rowScrollState = rememberScrollState()
 
-    fun navigate(key: Key){
+    fun navigate(key: Key) {
         when (key) {
             Key.DirectionUp -> onCellSelected(selectedRow - 1, selectedCol)
             Key.DirectionDown -> onCellSelected(selectedRow + 1, selectedCol)

@@ -26,7 +26,7 @@ import my.cmp.spreadsheeteditor.ui.theme.ColAccent
 import my.cmp.spreadsheeteditor.ui.theme.ColText
 import my.cmp.spreadsheeteditor.ui.theme.ColTextMuted
 
-/** A ribbon entry is a basic clicakble column that contains an icon and a label,
+/** A ribbon entry is a basic clickable column that contains an icon and a label,
  * centered horizontally and vertically. It resembles the ordinary available large
  * buttons in the ribbon of Microsoft Excel.
  */
@@ -50,7 +50,7 @@ fun RibbonEntry(
     }
 }
 
-/** A small ribbon button is a basic clicakble column that contains an icon and a label,
+/** A small ribbon button is a basic clickable column that contains an icon and a label,
  * centered horizontally and vertically. It resembles the ordinary available small
  * buttons in the ribbon of Microsoft Excel.
  */
