@@ -22,7 +22,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -243,6 +245,13 @@ fun SpreadsheetGrid(
                                         modifier = Modifier.padding(horizontal = 6.dp),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
+                                        fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
+                                        fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
+                                        textDecoration = when {
+                                            cellValue.underline -> TextDecoration.Underline
+                                            cellValue.strike -> TextDecoration.LineThrough
+                                            else -> TextDecoration.None
+                                        },
                                     )
                                 }
 
@@ -287,18 +296,25 @@ fun main() = application {
     var selectedCol by remember { mutableStateOf(0) }
     var formulaText by remember { mutableStateOf("") }
 
-    // Format toggles
-    var bold by remember { mutableStateOf(false) }
-    var italic by remember { mutableStateOf(false) }
-    var underline by remember { mutableStateOf(false) }
-    var wrapText by remember { mutableStateOf(false) }
-
     fun currentSelection() : CellRepresentation {
         return cellReps[selectedRow][selectedCol]
     }
 
     fun syncFormulaBar() {
         formulaText = currentSelection().cell.displayValue()
+    }
+
+    // Format toggles
+    var bold by remember { mutableStateOf(false) }
+    var italic by remember { mutableStateOf(false) }
+    var underline by remember { mutableStateOf(false) }
+    var wrapText by remember { mutableStateOf(false) }
+
+    fun syncStyleIndicators() {
+        bold = currentSelection().bold
+        italic = currentSelection().italic
+        underline = currentSelection().underline
+        wrapText = currentSelection().wrapText
     }
 
     fun commitFormula(row: Int, col: Int, formula: String) {
@@ -493,17 +509,26 @@ fun main() = application {
                                             io.github.composefluent.icons.Icons.Default.TextBold,
                                             "Bold",
                                             bold,
-                                            { bold = it })
+                                            {
+                                                cellReps[selectedRow][selectedCol].bold = !cellReps[selectedRow][selectedCol].bold
+                                                syncStyleIndicators()
+                                            })
                                         ToggleRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextItalic,
                                             "Italic",
                                             italic,
-                                            { italic = it })
+                                            {
+                                                cellReps[selectedRow][selectedCol].italic = !cellReps[selectedRow][selectedCol].italic
+                                                syncStyleIndicators()
+                                            })
                                         ToggleRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextUnderline,
                                             "Underline",
                                             underline,
-                                            { underline = it })
+                                            {
+                                                cellReps[selectedRow][selectedCol].underline = !cellReps[selectedRow][selectedCol].underline
+                                                syncStyleIndicators()
+                                            })
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -675,6 +700,7 @@ fun main() = application {
                         selectedRow = row
                         selectedCol = col
                         syncFormulaBar()
+                        syncStyleIndicators()
                     },
                     onCellEdited = { row, col, value ->
                         val isFormula = value.startsWith("=")

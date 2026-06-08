@@ -1,12 +1,20 @@
 package my.cmp.spreadsheeteditor.models
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 
 data class CellRepresentation(
     val cell: Cell,
     val height: Int,
     val width: Int,
-    val isSelected: Boolean
+    val isSelected: Boolean,
+    var bold: Boolean = false,
+    var italic: Boolean = false,
+    var underline: Boolean = false,
+    var strike: Boolean = false,
+    var fontColor: Color = Color.Unspecified,
+    var backgroundColor: Color = Color.Unspecified,
+    var wrapText: Boolean = false,
 ) {
     val row = cell.row
     val column = cell.column
