@@ -19,11 +19,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
-import androidx.compose.ui.text.TextDecorationLineStyle
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,6 +45,7 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.*
+import my.cmp.spreadsheeteditor.ui.utils.getTextStyle
 import my.cmp.spreadsheeteditor.utils.IGNORE_CHARS
 import my.cmp.spreadsheeteditor.utils.NAVIGATION_CHARS
 
@@ -216,14 +214,7 @@ fun SpreadsheetGrid(
                                             .fillMaxWidth()
                                             .padding(horizontal = 6.dp)
                                             .focusRequester(focusRequester),
-                                        textStyle = TextStyle(
-                                            color = ColText,
-                                            fontSize = 12.sp,
-                                            fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
-                                            fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
-                                            textDecoration = (if (cellValue.underline) TextDecoration.Underline else TextDecoration.None) +
-                                                    (if (cellValue.strike) TextDecoration.LineThrough else TextDecoration.None),
-                                        ),
+                                        textStyle = getTextStyle(cellValue),
                                         singleLine = true,
                                         cursorBrush = SolidColor(ColAccent),
                                     )
@@ -233,17 +224,10 @@ fun SpreadsheetGrid(
                                 } else {
                                     Text(
                                         text = cellValue.cell.displayValue(),
-                                        modifier = Modifier.padding(horizontal = 6.dp),
+                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        style = TextStyle(
-                                            color = ColText,
-                                            fontSize = 12.sp,
-                                            fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
-                                            fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
-                                            textDecoration = (if (cellValue.underline) TextDecoration.Underline else TextDecoration.None) +
-                                                    (if (cellValue.strike) TextDecoration.LineThrough else TextDecoration.None),
-                                        )
+                                        style = getTextStyle(cellValue)
                                     )
                                 }
 
@@ -288,7 +272,7 @@ fun main() = application {
     var selectedCol by remember { mutableStateOf(0) }
     var formulaText by remember { mutableStateOf("") }
 
-    fun currentSelection() : CellRepresentation {
+    fun currentSelection(): CellRepresentation {
         return cellReps[selectedRow][selectedCol]
     }
 
@@ -302,6 +286,7 @@ fun main() = application {
     var underline by remember { mutableStateOf(false) }
     var strike by remember { mutableStateOf(false) }
     var wrapText by remember { mutableStateOf(false) }
+    var textAlign by remember { mutableStateOf(TextAlign.Left) }
 
     fun syncStyleIndicators() {
         bold = currentSelection().bold
@@ -309,6 +294,16 @@ fun main() = application {
         underline = currentSelection().underline
         strike = currentSelection().strike
         wrapText = currentSelection().wrapText
+        textAlign = currentSelection().textAlign
+    }
+
+    fun setNewContent(row: Int, col: Int, newContent: CellContent, value: String) {
+        val newCell = cellReps[row][col].copy(
+            cell = cellReps[row][col].cell.copy(content = newContent)
+        )
+        cellReps[row] = cellReps[row].toMutableList()
+            .also { it[col] = newCell }.toTypedArray()
+        formulaText = value
     }
 
     fun commitFormula(row: Int, col: Int, formula: String) {
@@ -317,17 +312,12 @@ fun main() = application {
 
         val result = NativeBridge.getCellValue(row, col)
         val newContent = when {
-            result.isEmpty()            -> CellContent.Empty
-            result.startsWith("#ERR")   -> CellContent.ErrorContent(result)
+            result.isEmpty() -> CellContent.Empty
+            result.startsWith("#ERR") -> CellContent.ErrorContent(result)
             result.toDoubleOrNull() != null -> CellContent.NumberContent(result.toDouble())
-            else                        -> CellContent.TextContent(result)
+            else -> CellContent.TextContent(result)
         }
-        val newCell = cellReps[row][col].copy(
-            cell = cellReps[row][col].cell.copy(content = newContent)
-        )
-        cellReps[row] = cellReps[row].toMutableList()
-            .also { it[col] = newCell }.toTypedArray()
-        formulaText = result
+        setNewContent(row, col, newContent, result)
     }
 
     NucleusDecoratedWindowTheme(isDark = true) {
@@ -498,13 +488,19 @@ fun main() = application {
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     // Bold / Italic / Underline toggles
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.width(140.dp)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(
+                                            4.dp,
+                                            Alignment.CenterHorizontally
+                                        ), modifier = Modifier.width(140.dp)
+                                    ) {
                                         ToggleRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextBold,
                                             "Bold",
                                             bold,
                                             {
-                                                cellReps[selectedRow][selectedCol].bold = !cellReps[selectedRow][selectedCol].bold
+                                                cellReps[selectedRow][selectedCol].bold =
+                                                    !cellReps[selectedRow][selectedCol].bold
                                                 syncStyleIndicators()
                                             })
                                         ToggleRibbonButton(
@@ -512,7 +508,8 @@ fun main() = application {
                                             "Italic",
                                             italic,
                                             {
-                                                cellReps[selectedRow][selectedCol].italic = !cellReps[selectedRow][selectedCol].italic
+                                                cellReps[selectedRow][selectedCol].italic =
+                                                    !cellReps[selectedRow][selectedCol].italic
                                                 syncStyleIndicators()
                                             })
                                         ToggleRibbonButton(
@@ -520,7 +517,8 @@ fun main() = application {
                                             "Underline",
                                             underline,
                                             {
-                                                cellReps[selectedRow][selectedCol].underline = !cellReps[selectedRow][selectedCol].underline
+                                                cellReps[selectedRow][selectedCol].underline =
+                                                    !cellReps[selectedRow][selectedCol].underline
                                                 syncStyleIndicators()
                                             })
                                         ToggleRibbonButton(
@@ -528,27 +526,33 @@ fun main() = application {
                                             "Strike",
                                             strike,
                                             {
-                                                cellReps[selectedRow][selectedCol].strike = !cellReps[selectedRow][selectedCol].strike
+                                                cellReps[selectedRow][selectedCol].strike =
+                                                    !cellReps[selectedRow][selectedCol].strike
                                                 syncStyleIndicators()
                                             }
                                         )
                                     }
                                     Spacer(Modifier.height(4.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.width(140.dp)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(
+                                            4.dp,
+                                            Alignment.CenterHorizontally
+                                        ), modifier = Modifier.width(140.dp)
+                                    ) {
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextField,
                                             "Text",
-                                            modifier = Modifier.width(40.dp),
+                                            modifier = Modifier.width(44.dp),
                                             onClick = {})
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.ColorFill,
                                             "Fill",
-                                            modifier = Modifier.width(40.dp),
+                                            modifier = Modifier.width(44.dp),
                                             onClick = {})
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.BorderAll,
                                             "Border",
-                                            modifier = Modifier.width(40.dp),
+                                            modifier = Modifier.width(44.dp),
                                             onClick = {})
                                     }
                                     RibbonSectionLabel("STYLE")
@@ -561,19 +565,33 @@ fun main() = application {
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     // Alignment row
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(
+                                            4.dp,
+                                            Alignment.CenterHorizontally
+                                        )
+                                    ) {
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.AlignLeft,
                                             "Left",
-                                            onClick = {})
+                                            onClick = {
+                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Left
+                                                syncStyleIndicators()
+                                            })
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.AlignCenterHorizontal,
                                             "Center",
-                                            onClick = {})
+                                            onClick = {
+                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Center
+                                                syncStyleIndicators()
+                                            })
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.AlignRight,
                                             "Right",
-                                            onClick = {})
+                                            onClick = {
+                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Right
+                                                syncStyleIndicators()
+                                            })
                                     }
                                     Spacer(Modifier.height(4.dp))
                                     ToggleRibbonButton(
@@ -609,7 +627,8 @@ fun main() = application {
                                 var flyoutVisible by remember { mutableStateOf(false) }
 
                                 Box(
-                                    modifier = Modifier.clip(shape = RoundedCornerShape(4.dp)).background(Color(210,210,210))
+                                    modifier = Modifier.clip(shape = RoundedCornerShape(4.dp))
+                                        .background(Color(210, 210, 210))
                                 ) {
                                     SubtleButton(
                                         onClick = { flyoutVisible = !flyoutVisible },
@@ -618,9 +637,13 @@ fun main() = application {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 horizontalArrangement = Arrangement.SpaceBetween,
-                                                modifier = Modifier.width(110.dp).clip(shape = FluentTheme.shapes.overlay)
+                                                modifier = Modifier.width(110.dp)
+                                                    .clip(shape = FluentTheme.shapes.overlay)
                                             ) {
-                                                Text(cellReps[selectedRow][selectedCol].cell.content.type.toMenuLabel(), color = Color.Black)
+                                                Text(
+                                                    cellReps[selectedRow][selectedCol].cell.content.type.toMenuLabel(),
+                                                    color = Color.Black
+                                                )
                                                 Text("▾", color = Color.Black)
                                             }
                                         }
@@ -638,7 +661,8 @@ fun main() = application {
                                             MenuFlyoutItem(
                                                 onClick = {
                                                     flyoutVisible = false
-                                                    currentSelection().cell.content = currentSelection().cell.content.convertTo(option)
+                                                    currentSelection().cell.content =
+                                                        currentSelection().cell.content.convertTo(option)
                                                 },
                                                 text = { Text(option.toMenuLabel(), color = ColText) },
                                                 colors = ListItemDefaults.defaultListItemColors().copy(
@@ -651,9 +675,8 @@ fun main() = application {
                                     }
                                 }
                             }
-                        ),
-
                         )
+                    )
                 )
 
                 // ── Formula bar ───────────────────────────────────────────
@@ -671,6 +694,7 @@ fun main() = application {
                                 // Remove leading `=` before sending to C
                                 commitFormula(row, col, formulaText.drop(1))
                             }
+
                             else -> {
                                 val numberValue = formulaText.toDoubleOrNull()
                                 val newContent = if (formulaText.isEmpty()) {
@@ -709,57 +733,35 @@ fun main() = application {
                         syncStyleIndicators()
                     },
                     onCellEdited = { row, col, value ->
-                        val isFormula = value.startsWith("=")
-                        val newContent = when {
-                            isFormula -> CellContent.FormulaContent(value.drop(1))
-                            else -> {
-                                value.toDoubleOrNull()
-                                    ?.let {
-                                        val colLetter = ('A' + col)
-                                        NativeBridge.processCommand("$colLetter$row = $it")
-                                        CellContent.NumberContent(it)
-                                    }
-                                    ?: CellContent.TextContent(value)
-                            }
-                        }
-                        val newCell = cellReps[row][col].copy(
-                            cell = cellReps[row][col].cell.copy(content = newContent)
-                        )
-                        cellReps[row] = cellReps[row].toMutableList()
-                            .also { it[col] = newCell }.toTypedArray()
-                        formulaText = value
+                        val newContent = getNewContent(row, col, value)
+                        setNewContent(row, col, newContent, value)
                     },
                     onKeyStartTyping = { char ->
-                        val row = selectedRow;
+                        val row = selectedRow
                         val col = selectedCol
                         val seeded = char.toString()
-
-                        val isFormula = seeded.startsWith("=")
-                        val newContent = when {
-                            isFormula -> CellContent.FormulaContent(seeded.drop(1))
-                            else -> {
-                                seeded.toDoubleOrNull()
-                                    ?.let {
-                                        val colLetter = ('A' + col)
-                                        NativeBridge.processCommand("$colLetter$row = $it")
-                                        CellContent.NumberContent(it)
-                                    }
-                                    ?: CellContent.TextContent(seeded)
-                            }
-                        }
-
-                        val newCell = cellReps[row][col].copy(
-                            cell = cellReps[row][col].cell.copy(
-                                content = newContent
-                            )
-                        )
-                        cellReps[row] = cellReps[row].toMutableList()
-                            .also { it[col] = newCell }.toTypedArray()
-                        formulaText = seeded
+                        val newContent = getNewContent(row, col, seeded)
+                        setNewContent(row, col, newContent, value = seeded)
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+        }
+    }
+}
+
+fun getNewContent(row: Int, col: Int, value: String): CellContent {
+    val isFormula = value.startsWith("=")
+    return when {
+        isFormula -> CellContent.FormulaContent(value.drop(1))
+        else -> {
+            value.toDoubleOrNull()
+                ?.let {
+                    val colLetter = ('A' + col)
+                    NativeBridge.processCommand("$colLetter$row = $it")
+                    CellContent.NumberContent(it)
+                }
+                ?: CellContent.TextContent(value)
         }
     }
 }

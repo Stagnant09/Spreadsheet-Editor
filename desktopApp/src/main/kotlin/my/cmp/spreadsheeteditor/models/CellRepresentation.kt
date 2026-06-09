@@ -1,6 +1,7 @@
 package my.cmp.spreadsheeteditor.models
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 
 data class CellRepresentation(
@@ -14,6 +15,7 @@ data class CellRepresentation(
     var strike: Boolean = false,
     var fontColor: Color = Color.Unspecified,
     var backgroundColor: Color = Color.Unspecified,
+    var textAlign: TextAlign = TextAlign.Left,
     var wrapText: Boolean = false,
 ) {
     val row = cell.row
