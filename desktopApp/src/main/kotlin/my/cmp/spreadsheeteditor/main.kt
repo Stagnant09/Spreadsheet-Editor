@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.text.TextDecorationLineStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -218,6 +219,10 @@ fun SpreadsheetGrid(
                                         textStyle = TextStyle(
                                             color = ColText,
                                             fontSize = 12.sp,
+                                            fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
+                                            fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
+                                            textDecoration = (if (cellValue.underline) TextDecoration.Underline else TextDecoration.None) +
+                                                    (if (cellValue.strike) TextDecoration.LineThrough else TextDecoration.None),
                                         ),
                                         singleLine = true,
                                         cursorBrush = SolidColor(ColAccent),
@@ -228,18 +233,17 @@ fun SpreadsheetGrid(
                                 } else {
                                     Text(
                                         text = cellValue.cell.displayValue(),
-                                        color = ColText,
-                                        fontSize = 12.sp,
                                         modifier = Modifier.padding(horizontal = 6.dp),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
-                                        fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
-                                        fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
-                                        textDecoration = when {
-                                            cellValue.underline -> TextDecoration.Underline
-                                            cellValue.strike -> TextDecoration.LineThrough
-                                            else -> TextDecoration.None
-                                        },
+                                        style = TextStyle(
+                                            color = ColText,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
+                                            fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
+                                            textDecoration = (if (cellValue.underline) TextDecoration.Underline else TextDecoration.None) +
+                                                    (if (cellValue.strike) TextDecoration.LineThrough else TextDecoration.None),
+                                        )
                                     )
                                 }
 
@@ -296,12 +300,14 @@ fun main() = application {
     var bold by remember { mutableStateOf(false) }
     var italic by remember { mutableStateOf(false) }
     var underline by remember { mutableStateOf(false) }
+    var strike by remember { mutableStateOf(false) }
     var wrapText by remember { mutableStateOf(false) }
 
     fun syncStyleIndicators() {
         bold = currentSelection().bold
         italic = currentSelection().italic
         underline = currentSelection().underline
+        strike = currentSelection().strike
         wrapText = currentSelection().wrapText
     }
 
@@ -492,7 +498,7 @@ fun main() = application {
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     // Bold / Italic / Underline toggles
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.width(140.dp)) {
                                         ToggleRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextBold,
                                             "Bold",
@@ -517,20 +523,32 @@ fun main() = application {
                                                 cellReps[selectedRow][selectedCol].underline = !cellReps[selectedRow][selectedCol].underline
                                                 syncStyleIndicators()
                                             })
+                                        ToggleRibbonButton(
+                                            io.github.composefluent.icons.Icons.Default.TextStrikethrough,
+                                            "Strike",
+                                            strike,
+                                            {
+                                                cellReps[selectedRow][selectedCol].strike = !cellReps[selectedRow][selectedCol].strike
+                                                syncStyleIndicators()
+                                            }
+                                        )
                                     }
                                     Spacer(Modifier.height(4.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.width(140.dp)) {
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.TextField,
                                             "Text",
+                                            modifier = Modifier.width(40.dp),
                                             onClick = {})
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.ColorFill,
                                             "Fill",
+                                            modifier = Modifier.width(40.dp),
                                             onClick = {})
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.BorderAll,
                                             "Border",
+                                            modifier = Modifier.width(40.dp),
                                             onClick = {})
                                     }
                                     RibbonSectionLabel("STYLE")
@@ -543,7 +561,7 @@ fun main() = application {
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     // Alignment row
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)) {
                                         SmallRibbonButton(
                                             io.github.composefluent.icons.Icons.Default.AlignLeft,
                                             "Left",
