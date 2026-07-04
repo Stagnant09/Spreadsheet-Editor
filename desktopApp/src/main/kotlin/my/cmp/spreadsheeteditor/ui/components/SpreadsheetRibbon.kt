@@ -225,6 +225,8 @@ fun SpreadsheetRibbon(
 
                             ){
                                 var colorPickerVisible by remember { mutableStateOf(false) }
+                                var isExpanded by remember { mutableStateOf(false) }
+
                                 SmallRibbonButton(
                                     io.github.composefluent.icons.Icons.Default.TextField,
                                     "Text",
@@ -235,12 +237,20 @@ fun SpreadsheetRibbon(
 
                                 MenuFlyout(
                                     visible = colorPickerVisible,
-                                    onDismissRequest = { colorPickerVisible = false }
+                                    onDismissRequest = {
+                                        colorPickerVisible = false
+                                        isExpanded = false
+                                    }
                                 ) {
                                     Box(
-                                        modifier = Modifier.size(200.dp).background(Color.Black)
+                                        modifier = Modifier.height(if (isExpanded) 200.dp else 100.dp).width(200.dp)
                                     ) {
-                                        Text("Color Picker", color = Color.White)
+                                        ColorPicker(
+                                            isExpanded = isExpanded,
+                                            expandTrigger = { isExpanded = !isExpanded },
+                                            suggestedColors = listOf(Color.Black, Color.White, Color.Red, Color.Green, Color.Blue),
+                                            onColorSelected = { colorPickerVisible = false },
+                                        )
                                     }
                                 }
                             }
