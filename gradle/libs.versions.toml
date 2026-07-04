@@ -21,7 +21,7 @@ compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMul
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 kotlinx-coroutinesSwing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "kotlinx-coroutines" }
-nucleus-decoratedWindow = { module = "dev.nucleusframework:nucleus.decorated-window-jbr", version.ref = "nucleus" }
+nucleus-decoratedWindow = { module = "dev.nucleusframework:nucleus.decorated-window-jni", version.ref = "nucleus" }
 nucleus-decoratedWindow-material2 = { module = "dev.nucleusframework:nucleus.decorated-window-material2", version.ref = "nucleus" }
 androidx-material3-desktop = { group = "androidx.compose.material3", name = "material3-desktop", version.ref = "material3Desktop" }
 

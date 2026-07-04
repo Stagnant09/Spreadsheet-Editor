@@ -46,207 +46,8 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.*
 import my.cmp.spreadsheeteditor.ui.utils.getTextStyle
-import my.cmp.spreadsheeteditor.utils.IGNORE_CHARS
-import my.cmp.spreadsheeteditor.utils.NAVIGATION_CHARS
+import my.cmp.spreadsheeteditor.utils.*
 
-// ─── Grid constants ───────────────────────────────────────────────────────────
-private const val ROWS = 50
-private const val COLS = 26
-private val COL_HEADER_WIDTH: Dp = 48.dp
-private val COL_WIDTH: Dp = 120.dp
-private val ROW_HEIGHT: Dp = 28.dp
-private val HEADER_HEIGHT: Dp = 26.dp
-
-// ─── Spreadsheet grid ────────────────────────────────────────────────────────
-@Composable
-fun SpreadsheetGrid(
-    cells: Array<Array<CellRepresentation>>,
-    selectedRow: Int,
-    selectedCol: Int,
-    onCellSelected: (row: Int, col: Int) -> Unit,
-    onCellEdited: (row: Int, col: Int, value: String) -> Unit,
-    onKeyStartTyping: (Char) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colScrollState = rememberScrollState()
-    val rowScrollState = rememberScrollState()
-
-    fun navigate(key: Key) {
-        when (key) {
-            Key.DirectionUp -> onCellSelected(selectedRow - 1, selectedCol)
-            Key.DirectionDown -> onCellSelected(selectedRow + 1, selectedCol)
-            Key.DirectionLeft -> onCellSelected(selectedRow, selectedCol - 1)
-            Key.DirectionRight -> onCellSelected(selectedRow, selectedCol + 1)
-        }
-    }
-
-    Column(modifier = modifier.background(ColBg)) {
-
-        // ── Column headers ──────────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(HEADER_HEIGHT)
-                .horizontalScroll(colScrollState),
-        ) {
-            // Corner cell
-            Box(
-                modifier = Modifier
-                    .width(COL_HEADER_WIDTH)
-                    .fillMaxHeight()
-                    .background(ColGridHeader)
-                    .border(BorderStroke(0.5.dp, ColGridBorder)),
-            )
-            repeat(COLS) { col ->
-                val isSelected = col == selectedCol
-                Box(
-                    modifier = Modifier
-                        .width(COL_WIDTH)
-                        .fillMaxHeight()
-                        .background(if (isSelected) ColSelected else ColGridHeader)
-                        .border(BorderStroke(0.5.dp, ColGridBorder)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = ('A' + col).toString(),
-                        color = if (isSelected) ColAccent else ColTextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    )
-                }
-            }
-        }
-
-        // ── Rows ─────────────────────────────────────────────────────────────
-        Box(modifier = Modifier.fillMaxSize()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .horizontalScroll(colScrollState),
-            ) {
-                itemsIndexed(cells) { rowIdx, row ->
-                    Row(
-                        modifier = Modifier.height(ROW_HEIGHT),
-                    ) {
-                        // Row number header
-                        val rowSelected = rowIdx == selectedRow
-                        Box(
-                            modifier = Modifier
-                                .width(COL_HEADER_WIDTH)
-                                .fillMaxHeight()
-                                .background(if (rowSelected) ColSelected else ColGridHeader)
-                                .border(BorderStroke(0.5.dp, ColGridBorder)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = rowIdx.toString(),
-                                color = if (rowSelected) ColAccent else ColTextMuted,
-                                fontSize = 11.sp,
-                                fontWeight = if (rowSelected) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        }
-
-                        // Data cells
-                        row.forEachIndexed { colIdx, cellValue ->
-                            val isSelected = rowIdx == selectedRow && colIdx == selectedCol
-                            val focusRequester = remember { FocusRequester() }
-                            Box(
-                                modifier = Modifier
-                                    .width(COL_WIDTH)
-                                    .fillMaxHeight()
-                                    .background(
-                                        when {
-                                            isSelected -> ColSelected
-                                            rowIdx % 2 == 0 -> ColBg
-                                            else -> ColGrid
-                                        }
-                                    )
-                                    .border(BorderStroke(0.5.dp, ColGridBorder))
-                                    .clickable { onCellSelected(rowIdx, colIdx) }
-                                    .onKeyEvent { event ->                          // intercept keystrokes
-                                        if (NAVIGATION_CHARS.contains(event.key)) {
-                                            navigate(event.key)
-                                        }
-                                        if (isSelected &&
-                                            event.type == KeyEventType.KeyDown &&
-                                            !IGNORE_CHARS.contains(event.key) &&
-                                            event.utf16CodePoint > 0x1F             // printable chars only
-                                        ) {
-                                            val char = if (event.isShiftPressed) {
-                                                when (event.key) {
-                                                    Key.Zero -> ')'
-                                                    Key.One -> '!'
-                                                    Key.Two -> '@'
-                                                    Key.Three -> '#'
-                                                    Key.Four -> '$'
-                                                    Key.Five -> '%'
-                                                    Key.Six -> '^'
-                                                    Key.Seven -> '&'
-                                                    Key.Eight -> '*'
-                                                    Key.Nine -> '('
-                                                    Key.Equals -> '+'
-                                                    Key.Minus -> '_'
-                                                    Key.Semicolon -> ':'
-                                                    Key.Apostrophe -> '"'
-                                                    Key.Comma -> '<'
-                                                    Key.Period -> '>'
-                                                    Key.Slash -> '?'
-                                                    Key.Backslash -> '|'
-                                                    Key.LeftBracket -> '{'
-                                                    Key.RightBracket -> '}'
-                                                    Key.Grave -> '~'
-                                                    else -> event.utf16CodePoint.toChar().uppercaseChar()
-                                                }
-                                            } else {
-                                                event.utf16CodePoint.toChar()
-                                            }
-                                            onKeyStartTyping(char)
-                                            true                                    // consumed
-                                        } else false
-                                    },
-                                contentAlignment = Alignment.CenterStart,
-                            ) {
-                                if (isSelected) {
-                                    BasicTextField(
-                                        value = cellValue.cell.displayValue(),
-                                        onValueChange = { onCellEdited(rowIdx, colIdx, it) },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 6.dp)
-                                            .focusRequester(focusRequester),
-                                        textStyle = getTextStyle(cellValue),
-                                        singleLine = true,
-                                        cursorBrush = SolidColor(ColAccent),
-                                    )
-                                    LaunchedEffect(true) {
-                                        focusRequester.requestFocus()
-                                    }
-                                } else {
-                                    Text(
-                                        text = cellValue.cell.displayValue(),
-                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        style = getTextStyle(cellValue)
-                                    )
-                                }
-
-                                // Selection border highlight
-                                if (isSelected) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .border(BorderStroke(1.5.dp, ColAccent)),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -340,8 +141,8 @@ fun main() = application {
                     val isWindows = System.getProperty("os.name").lowercase().contains("windows")
                     Row(
                         modifier = Modifier
-                            .fillMaxSize(if (isWindows) 1f else 0.9f)
-                            .padding(horizontal = if (isWindows) 78.dp else 0.dp),
+                            .fillMaxSize(0.9f)
+                            .padding(start = if (isWindows) 80.dp else 0.dp, end = if (isWindows) 200.dp else 0.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text("Spreadsheet Editor", color = Color.White, fontWeight = FontWeight.SemiBold)
@@ -349,334 +150,39 @@ fun main() = application {
                 }
 
                 // ── Ribbon ────────────────────────────────────────────────
-                Ribbon(
-                    modifier = Modifier
-                        .background(ColRibbon)
-                        .height(120.dp)
-                        .fillMaxWidth()
-                        .border(BorderStroke(1.dp, ColDivider)),
-                    contentUnits = listOf(
-
-                        // ── File ──────────────────────────────────────────
-                        listOf(
-                            {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(horizontal = 4.dp),
-                                ) {
-                                    RibbonEntry(
-                                        icon = {
-                                            Icon(
-                                                imageVector = io.github.composefluent.icons.Icons.Filled.Add,
-                                                "New",
-                                                tint = ColText,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        },
-                                        label = "New",
-                                        onClick = {},
-                                        textColor = Color.White
-                                    )
-                                }
-                            },
-                            {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(horizontal = 4.dp),
-                                ) {
-                                    RibbonEntry(
-                                        icon = {
-                                            Icon(
-                                                io.github.composefluent.icons.Icons.Filled.Edit,
-                                                "Open",
-                                                tint = ColText,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        },
-                                        label = "Open",
-                                        onClick = {},
-                                        textColor = Color.White
-                                    )
-                                }
-                            },
-                            {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    // Save (large) + Save As (small) stacked
-                                    RibbonEntry(
-                                        icon = {
-                                            Icon(
-                                                io.github.composefluent.icons.Icons.Filled.Save,
-                                                "Save",
-                                                tint = ColText,
-                                                modifier = Modifier.size(32.dp)
-                                            )
-                                        },
-                                        label = "Save",
-                                        onClick = {},
-                                        textColor = Color.White
-                                    )
-                                }
-                            },
-                            {
-                                Column(
-                                    verticalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
-                                ) {
-                                    SmallRibbonButton(Icons.Default.Share, "Save As", onClick = {})
-                                    SmallRibbonButton(Icons.Default.Share, "Export", onClick = {})
-                                }
-                            },
-                        ),
-
-                        // ── Edit ──────────────────────────────────────────
-                        listOf(
-                            {
-                                Column(
-                                    verticalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
-                                ) {
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.Copy,
-                                        "Copy",
-                                        onClick = {}
-                                    )
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.ClipboardPaste,
-                                        "Paste",
-                                        onClick = {}
-                                    )
-                                }
-                            },
-                            {
-                                Column(
-                                    verticalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
-                                ) {
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.Cut,
-                                        "Cut",
-                                        onClick = {})
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.Delete,
-                                        "Clear",
-                                        onClick = {})
-                                }
-                            },
-                            {
-                                Column(
-                                    verticalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
-                                ) {
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.ArrowUndo,
-                                        "Undo",
-                                        onClick = {})
-                                    SmallRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.ArrowRedo,
-                                        "Redo",
-                                        onClick = {})
-                                }
-                            },
-                        ),
-
-                        // ── Format ────────────────────────────────────────
-                        listOf(
-                            {
-                                Column(
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 4.dp),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    // Bold / Italic / Underline toggles
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(
-                                            4.dp,
-                                            Alignment.CenterHorizontally
-                                        ), modifier = Modifier.width(140.dp)
-                                    ) {
-                                        ToggleRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.TextBold,
-                                            "Bold",
-                                            bold,
-                                            {
-                                                cellReps[selectedRow][selectedCol].bold =
-                                                    !cellReps[selectedRow][selectedCol].bold
-                                                syncStyleIndicators()
-                                            })
-                                        ToggleRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.TextItalic,
-                                            "Italic",
-                                            italic,
-                                            {
-                                                cellReps[selectedRow][selectedCol].italic =
-                                                    !cellReps[selectedRow][selectedCol].italic
-                                                syncStyleIndicators()
-                                            })
-                                        ToggleRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.TextUnderline,
-                                            "Underline",
-                                            underline,
-                                            {
-                                                cellReps[selectedRow][selectedCol].underline =
-                                                    !cellReps[selectedRow][selectedCol].underline
-                                                syncStyleIndicators()
-                                            })
-                                        ToggleRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.TextStrikethrough,
-                                            "Strike",
-                                            strike,
-                                            {
-                                                cellReps[selectedRow][selectedCol].strike =
-                                                    !cellReps[selectedRow][selectedCol].strike
-                                                syncStyleIndicators()
-                                            }
-                                        )
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(
-                                            4.dp,
-                                            Alignment.CenterHorizontally
-                                        ), modifier = Modifier.width(140.dp)
-                                    ) {
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.TextField,
-                                            "Text",
-                                            modifier = Modifier.width(44.dp),
-                                            onClick = {})
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.ColorFill,
-                                            "Fill",
-                                            modifier = Modifier.width(44.dp),
-                                            onClick = {})
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.BorderAll,
-                                            "Border",
-                                            modifier = Modifier.width(44.dp),
-                                            onClick = {})
-                                    }
-                                    RibbonSectionLabel("STYLE")
-                                }
-                            },
-                            {
-                                Column(
-                                    modifier = Modifier.fillMaxHeight().padding(horizontal = 4.dp),
-                                    verticalArrangement = Arrangement.Center,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    // Alignment row
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(
-                                            4.dp,
-                                            Alignment.CenterHorizontally
-                                        )
-                                    ) {
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.AlignLeft,
-                                            "Left",
-                                            onClick = {
-                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Left
-                                                syncStyleIndicators()
-                                            })
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.AlignCenterHorizontal,
-                                            "Center",
-                                            onClick = {
-                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Center
-                                                syncStyleIndicators()
-                                            })
-                                        SmallRibbonButton(
-                                            io.github.composefluent.icons.Icons.Default.AlignRight,
-                                            "Right",
-                                            onClick = {
-                                                cellReps[selectedRow][selectedCol].textAlign = TextAlign.Right
-                                                syncStyleIndicators()
-                                            })
-                                    }
-                                    Spacer(Modifier.height(4.dp))
-                                    ToggleRibbonButton(
-                                        io.github.composefluent.icons.Icons.Default.TextWrap,
-                                        "Wrap",
-                                        wrapText,
-                                        { wrapText = it },
-                                        modifier = Modifier.width(96.dp)
-                                    )
-                                    RibbonSectionLabel("FORMAT")
-                                }
-                            },
-                        ),
-
-                        // ── Insert ────────────────────────────────────────
-                        listOf(
-                            {
-                                RibbonEntry(
-                                    icon = {
-                                        Icon(
-                                            io.github.composefluent.icons.Icons.Default.MathFormula,
-                                            "Function",
-                                            tint = ColText,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                    },
-                                    label = "Function",
-                                    onClick = {},
-                                    textColor = Color.White
-                                )
-                            },
-                            {
-                                var flyoutVisible by remember { mutableStateOf(false) }
-
-                                Box(
-                                    modifier = Modifier.clip(shape = RoundedCornerShape(4.dp))
-                                        .background(Color(210, 210, 210))
-                                ) {
-                                    SubtleButton(
-                                        onClick = { flyoutVisible = !flyoutVisible },
-                                        modifier = Modifier.commandBarButtonSize(),
-                                        content = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                modifier = Modifier.width(110.dp)
-                                                    .clip(shape = FluentTheme.shapes.overlay)
-                                            ) {
-                                                Text(
-                                                    cellReps[selectedRow][selectedCol].cell.content.type.toMenuLabel(),
-                                                    color = Color.Black
-                                                )
-                                                Text("▾", color = Color.Black)
-                                            }
-                                        }
-                                    )
-
-                                    MenuFlyout(
-                                        visible = flyoutVisible,
-                                        onDismissRequest = { flyoutVisible = false },
-                                        modifier = Modifier.background(
-                                            color = Color(0xFF303030),
-                                            shape = FluentTheme.shapes.overlay
-                                        )
-                                    ) {
-                                        CellContentType.entries.dropLast(1).forEach { option ->
-                                            MenuFlyoutItem(
-                                                onClick = {
-                                                    flyoutVisible = false
-                                                    currentSelection().cell.content =
-                                                        currentSelection().cell.content.convertTo(option)
-                                                },
-                                                text = { Text(option.toMenuLabel(), color = ColText) },
-                                                colors = ListItemDefaults.defaultListItemColors().copy(
-                                                    hovered = ListItemDefaults.defaultListItemColors().hovered.copy(
-                                                        fillColor = Color(0xFF202020)
-                                                    )
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                    )
+                SpreadsheetRibbon(
+                    cellReps = cellReps,
+                    selectedRow = selectedRow,
+                    selectedCol = selectedCol,
+                    bold = bold,
+                    italic = italic,
+                    underline = underline,
+                    strike = strike,
+                    wrapText = wrapText,
+                    onBoldToggle = {
+                        cellReps[selectedRow][selectedCol].bold = !cellReps[selectedRow][selectedCol].bold
+                        syncStyleIndicators()
+                    },
+                    onItalicToggle = {
+                        cellReps[selectedRow][selectedCol].italic = !cellReps[selectedRow][selectedCol].italic
+                        syncStyleIndicators()
+                    },
+                    onUnderlineToggle = {
+                        cellReps[selectedRow][selectedCol].underline = !cellReps[selectedRow][selectedCol].underline
+                        syncStyleIndicators()
+                    },
+                    onStrikeToggle = {
+                        cellReps[selectedRow][selectedCol].strike = !cellReps[selectedRow][selectedCol].strike
+                        syncStyleIndicators()
+                    },
+                    onTextAlignChange = {
+                        cellReps[selectedRow][selectedCol].textAlign = it
+                        syncStyleIndicators()
+                    },
+                    onWrapTextToggle = { wrapText = it },
+                    onCellTypeChange = {
+                        currentSelection().cell.content = currentSelection().cell.content.convertTo(it)
+                    }
                 )
 
                 // ── Formula bar ───────────────────────────────────────────
@@ -746,22 +252,6 @@ fun main() = application {
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-        }
-    }
-}
-
-fun getNewContent(row: Int, col: Int, value: String): CellContent {
-    val isFormula = value.startsWith("=")
-    return when {
-        isFormula -> CellContent.FormulaContent(value.drop(1))
-        else -> {
-            value.toDoubleOrNull()
-                ?.let {
-                    val colLetter = ('A' + col)
-                    NativeBridge.processCommand("$colLetter$row = $it")
-                    CellContent.NumberContent(it)
-                }
-                ?: CellContent.TextContent(value)
         }
     }
 }
