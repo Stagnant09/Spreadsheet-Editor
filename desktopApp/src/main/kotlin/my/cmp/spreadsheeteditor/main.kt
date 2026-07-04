@@ -1,53 +1,31 @@
 package my.cmp.spreadsheeteditor
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.application
 import dev.nucleusframework.window.DecoratedWindow
 import dev.nucleusframework.window.DecoratedWindowState
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar
-import io.github.composefluent.FluentTheme
-import io.github.composefluent.component.*
-import io.github.composefluent.icons.filled.Add
-import io.github.composefluent.icons.filled.Edit
-import io.github.composefluent.icons.filled.Save
-import io.github.composefluent.icons.regular.*
 import my.cmp.spreadsheeteditor.models.Cell
 import my.cmp.spreadsheeteditor.models.Cell.Companion.displayValue
 import my.cmp.spreadsheeteditor.models.CellContent
-import my.cmp.spreadsheeteditor.models.CellContentType
-import my.cmp.spreadsheeteditor.models.CellContentType.Companion.toMenuLabel
 import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import my.cmp.spreadsheeteditor.ui.components.*
-import my.cmp.spreadsheeteditor.ui.theme.*
-import my.cmp.spreadsheeteditor.ui.utils.getTextStyle
-import my.cmp.spreadsheeteditor.utils.*
-
+import my.cmp.spreadsheeteditor.ui.theme.ColBg
+import my.cmp.spreadsheeteditor.ui.theme.ColText
+import my.cmp.spreadsheeteditor.ui.theme.titleBarGradient
+import my.cmp.spreadsheeteditor.utils.getNewContent
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -228,7 +206,13 @@ fun main() = application {
 
                 // ── Spreadsheet grid ──────────────────────────────────────
                 SpreadsheetGrid(
-                    cells = cellReps.toTypedArray(),
+                    cells = cellReps.apply {
+                        this.forEach { array ->
+                            array.forEach { cell ->
+                                cell.fontColor = ColText
+                            }
+                        }
+                    }.toTypedArray(),
                     selectedRow = selectedRow,
                     selectedCol = selectedCol,
                     onCellSelected = { row, col ->

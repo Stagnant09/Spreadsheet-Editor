@@ -122,7 +122,7 @@ fun SpreadsheetRibbon(
                         modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
                     ) {
                         SmallRibbonButton(Icons.Default.Share, "Save As", onClick = {})
-                        SmallRibbonButton(Icons.Default.Share, "Export", onClick = {})
+                        SmallRibbonButton(io.github.composefluent.icons.Icons.Default.ArrowExportLtr, "Export", onClick = {})
                     }
                 },
             ),
@@ -221,11 +221,29 @@ fun SpreadsheetRibbon(
                                 Alignment.CenterHorizontally
                             ), modifier = Modifier.width(140.dp)
                         ) {
-                            SmallRibbonButton(
-                                io.github.composefluent.icons.Icons.Default.TextField,
-                                "Text",
-                                modifier = Modifier.width(44.dp),
-                                onClick = {})
+                            Box(
+
+                            ){
+                                var colorPickerVisible by remember { mutableStateOf(false) }
+                                SmallRibbonButton(
+                                    io.github.composefluent.icons.Icons.Default.TextField,
+                                    "Text",
+                                    modifier = Modifier.width(44.dp),
+                                    onClick = {
+                                        colorPickerVisible = true
+                                    })
+
+                                MenuFlyout(
+                                    visible = colorPickerVisible,
+                                    onDismissRequest = { colorPickerVisible = false }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.size(200.dp).background(Color.Black)
+                                    ) {
+                                        Text("Color Picker", color = Color.White)
+                                    }
+                                }
+                            }
                             SmallRibbonButton(
                                 io.github.composefluent.icons.Icons.Default.ColorFill,
                                 "Fill",

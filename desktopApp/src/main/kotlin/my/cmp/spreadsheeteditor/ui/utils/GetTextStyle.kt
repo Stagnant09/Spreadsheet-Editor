@@ -9,7 +9,7 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.ui.theme.ColText
 
 fun getTextStyle(cellValue: CellRepresentation) = TextStyle(
-    color = ColText,
+    color = cellValue.fontColor ?: ColText,
     fontSize = 12.sp,
     fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
     fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
