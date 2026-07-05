@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
@@ -133,6 +134,7 @@ fun SpreadsheetGrid(
                                     .background(
                                         when {
                                             isSelected -> ColSelected
+                                            cellValue.backgroundColor != Color.Transparent -> cellValue.backgroundColor
                                             rowIdx % 2 == 0 -> ColBg
                                             else -> ColGrid
                                         }

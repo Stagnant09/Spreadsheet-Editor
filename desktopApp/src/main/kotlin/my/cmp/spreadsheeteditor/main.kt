@@ -67,6 +67,9 @@ fun main() = application {
     var wrapText by remember { mutableStateOf(false) }
     var textAlign by remember { mutableStateOf(TextAlign.Left) }
 
+    var fontColor by remember { mutableStateOf(ColText) }
+    var backgroundColor by remember { mutableStateOf(Color.Transparent) }
+
     fun syncStyleIndicators() {
         bold = currentSelection().bold
         italic = currentSelection().italic
@@ -74,6 +77,8 @@ fun main() = application {
         strike = currentSelection().strike
         wrapText = currentSelection().wrapText
         textAlign = currentSelection().textAlign
+        fontColor = currentSelection().fontColor
+        backgroundColor = currentSelection().backgroundColor
     }
 
     fun setNewContent(row: Int, col: Int, newContent: CellContent, value: String) {
@@ -160,7 +165,17 @@ fun main() = application {
                     onWrapTextToggle = { wrapText = it },
                     onCellTypeChange = {
                         currentSelection().cell.content = currentSelection().cell.content.convertTo(it)
-                    }
+                    },
+                    onColorSelected = {
+                        cellReps[selectedRow][selectedCol].fontColor = it
+                        syncStyleIndicators()
+                    },
+                    onBackgroundColorSelected = {
+                        cellReps[selectedRow][selectedCol].backgroundColor = it
+                        syncStyleIndicators()
+                    },
+                    fontColor = fontColor,
+                    backgroundColor = backgroundColor
                 )
 
                 // ── Formula bar ───────────────────────────────────────────
@@ -209,7 +224,8 @@ fun main() = application {
                     cells = cellReps.apply {
                         this.forEach { array ->
                             array.forEach { cell ->
-                                cell.fontColor = ColText
+                                if(cell.fontColor == Color.Unspecified) cell.fontColor = ColText
+                                if(cell.backgroundColor == Color.Unspecified) cell.backgroundColor = Color.Transparent
                             }
                         }
                     }.toTypedArray(),

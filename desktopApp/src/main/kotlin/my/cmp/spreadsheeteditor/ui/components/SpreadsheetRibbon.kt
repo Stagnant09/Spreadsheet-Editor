@@ -46,6 +46,10 @@ fun SpreadsheetRibbon(
     onTextAlignChange: (TextAlign) -> Unit,
     onWrapTextToggle: (Boolean) -> Unit,
     onCellTypeChange: (CellContentType) -> Unit,
+    onColorSelected: (Color) -> Unit,
+    onBackgroundColorSelected: (Color) -> Unit,
+    fontColor: Color,
+    backgroundColor: Color,
     modifier: Modifier = Modifier
 ) {
     val currentSelection = cellReps[selectedRow][selectedCol]
@@ -230,6 +234,7 @@ fun SpreadsheetRibbon(
                                 SmallRibbonButton(
                                     io.github.composefluent.icons.Icons.Default.TextField,
                                     "Text",
+                                    tint = fontColor,
                                     modifier = Modifier.width(44.dp),
                                     onClick = {
                                         colorPickerVisible = true
@@ -243,22 +248,57 @@ fun SpreadsheetRibbon(
                                     }
                                 ) {
                                     Box(
-                                        modifier = Modifier.height(if (isExpanded) 200.dp else 100.dp).width(200.dp)
+                                        modifier = Modifier.height(if (isExpanded) 300.dp else 100.dp).width(200.dp)
                                     ) {
                                         ColorPicker(
                                             isExpanded = isExpanded,
                                             expandTrigger = { isExpanded = !isExpanded },
-                                            suggestedColors = listOf(Color.Black, Color.White, Color.Red, Color.Green, Color.Blue),
-                                            onColorSelected = { colorPickerVisible = false },
+                                            suggestedColors = listOf(Color.Black, Color.White, Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta, Color.Cyan),
+                                            onColorSelected = {
+                                                onColorSelected(it)
+                                                colorPickerVisible = false
+                                            },
                                         )
                                     }
                                 }
                             }
-                            SmallRibbonButton(
-                                io.github.composefluent.icons.Icons.Default.ColorFill,
-                                "Fill",
-                                modifier = Modifier.width(44.dp),
-                                onClick = {})
+                            Box(
+
+                            ){
+                                var colorPickerVisible by remember { mutableStateOf(false) }
+                                var isExpanded by remember { mutableStateOf(false) }
+
+                                SmallRibbonButton(
+                                    io.github.composefluent.icons.Icons.Default.ColorFill,
+                                    "Fill",
+                                    tint = if (backgroundColor == Color.Transparent) ColText else backgroundColor,
+                                    modifier = Modifier.width(44.dp),
+                                    onClick = {
+                                        colorPickerVisible = true
+                                    })
+
+                                MenuFlyout(
+                                    visible = colorPickerVisible,
+                                    onDismissRequest = {
+                                        colorPickerVisible = false
+                                        isExpanded = false
+                                    }
+                                ) {
+                                    Box(
+                                        modifier = Modifier.height(if (isExpanded) 300.dp else 100.dp).width(200.dp)
+                                    ) {
+                                        ColorPicker(
+                                            isExpanded = isExpanded,
+                                            expandTrigger = { isExpanded = !isExpanded },
+                                            suggestedColors = listOf(Color.Black, Color.White, Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta, Color.Cyan),
+                                            onColorSelected = {
+                                                onBackgroundColorSelected(it)
+                                                colorPickerVisible = false
+                                            },
+                                        )
+                                    }
+                                }
+                            }
                             SmallRibbonButton(
                                 io.github.composefluent.icons.Icons.Default.BorderAll,
                                 "Border",
