@@ -10,8 +10,7 @@ fun getNewContent(row: Int, col: Int, value: String): CellContent {
         else -> {
             value.toDoubleOrNull()
                 ?.let {
-                    val colLetter = ('A' + col)
-                    NativeBridge.processCommand("$colLetter$row = $it")
+                    NativeBridge.processCommand("${columnLabel(col)}$row = $it")
                     CellContent.NumberContent(it)
                 }
                 ?: CellContent.TextContent(value)

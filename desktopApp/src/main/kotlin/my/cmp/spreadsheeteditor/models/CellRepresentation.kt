@@ -3,6 +3,7 @@ package my.cmp.spreadsheeteditor.models
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import my.cmp.spreadsheeteditor.utils.columnLabel
 
 data class CellRepresentation(
     val cell: Cell,
@@ -34,6 +35,6 @@ data class CellRepresentation(
     )
 
     companion object {
-        fun CellRepresentation.cellAddress() = "${'A' + column}$row"
+        fun CellRepresentation.cellAddress() = "${columnLabel(column)}$row"
     }
 }

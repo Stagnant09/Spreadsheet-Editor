@@ -16,16 +16,22 @@ import dev.nucleusframework.window.DecoratedWindow
 import dev.nucleusframework.window.DecoratedWindowState
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar
-import my.cmp.spreadsheeteditor.models.Cell
+import androidx.compose.ui.graphics.toArgb
+import my.cmp.spreadsheeteditor.models.*
 import my.cmp.spreadsheeteditor.models.Cell.Companion.displayValue
-import my.cmp.spreadsheeteditor.models.CellContent
-import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
+import java.io.File
+import java.util.*
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.ColBg
 import my.cmp.spreadsheeteditor.ui.theme.ColText
 import my.cmp.spreadsheeteditor.ui.theme.titleBarGradient
+import my.cmp.spreadsheeteditor.utils.FormulaDependencyGraph
+import my.cmp.spreadsheeteditor.utils.columnLabel
 import my.cmp.spreadsheeteditor.utils.getNewContent
+import java.awt.FileDialog
+import java.awt.Frame
+import java.io.FilenameFilter
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -49,7 +55,33 @@ fun main() = application {
     }
     var selectedRow by remember { mutableStateOf(0) }
     var selectedCol by remember { mutableStateOf(0) }
+    var selectionAnchorRow by remember { mutableStateOf(0) }
+    var selectionAnchorCol by remember { mutableStateOf(0) }
     var formulaText by remember { mutableStateOf("") }
+
+    // Tracks which cells' formulas read which other cells, so editing a
+    // cell can auto-recalculate everything downstream of it, and so a
+    // formula that would create a reference cycle can be rejected.
+    val depGraph = remember { FormulaDependencyGraph() }
+
+    // Currently open file (set on Save/Save As/Open), used so a plain
+    // "Save" re-uses the last path instead of always prompting.
+    var currentFile by remember { mutableStateOf<File?>(null) }
+
+    val undoStack = remember { mutableStateListOf<List<Array<CellRepresentation>>>() }
+    val redoStack = remember { mutableStateListOf<List<Array<CellRepresentation>>>() }
+
+    fun pushUndo() {
+        val snapshot = cellReps.map { row ->
+            row.map { it.copy(cell = it.cell.copy(content = it.cell.content)) }.toTypedArray()
+        }
+        undoStack.add(snapshot)
+        redoStack.clear()
+        if (undoStack.size > 50) undoStack.removeAt(0)
+    }
+
+    // Rectangular block clipboard (supports both single-cell and multi-cell copy/paste)
+    var clipboardBlock: Array<Array<CellRepresentation>>? by remember { mutableStateOf(null) }
 
     fun currentSelection(): CellRepresentation {
         return cellReps[selectedRow][selectedCol]
@@ -57,6 +89,25 @@ fun main() = application {
 
     fun syncFormulaBar() {
         formulaText = currentSelection().cell.displayValue()
+    }
+
+    // Runs [action] over every cell in the current selection rectangle
+    // (anchor..focus), so formatting/clear operations apply to the whole
+    // multi-cell selection instead of just the last-clicked cell.
+    fun forEachSelectedCell(action: (row: Int, col: Int) -> Unit) {
+        val minRow = minOf(selectionAnchorRow, selectedRow)
+        val maxRow = maxOf(selectionAnchorRow, selectedRow)
+        val minCol = minOf(selectionAnchorCol, selectedCol)
+        val maxCol = maxOf(selectionAnchorCol, selectedCol)
+        for (r in minRow..maxRow) for (c in minCol..maxCol) action(r, c)
+    }
+
+    // Replaces cellReps[row][col] via an explicit list rebuild + reassignment,
+    // which is what makes Compose's snapshot list notice the change — mutating
+    // a field on the CellRepresentation object in place would not.
+    fun updateCellRep(row: Int, col: Int, transform: (CellRepresentation) -> CellRepresentation) {
+        cellReps[row] = cellReps[row].toMutableList()
+            .also { it[col] = transform(it[col]) }.toTypedArray()
     }
 
     // Format toggles
@@ -81,27 +132,310 @@ fun main() = application {
         backgroundColor = currentSelection().backgroundColor
     }
 
+    // Converts a raw engine result string into typed cell content. When
+    // [formulaSource] is non-null the result came from evaluating that
+    // formula, so the content keeps the formula text (for the formula bar
+    // and CSV round-trip) alongside the freshly computed value.
+    fun classifyEngineResult(result: String, formulaSource: String?): CellContent = when {
+        result.isEmpty() -> CellContent.Empty
+        result.startsWith("#") -> CellContent.ErrorContent(result)
+        result.toDoubleOrNull() != null -> if (formulaSource != null) {
+            CellContent.FormulaContent(formulaSource, cachedResult = result.toDouble())
+        } else {
+            CellContent.NumberContent(result.toDouble())
+        }
+        else -> CellContent.TextContent(result)
+    }
+
+    fun applyContent(row: Int, col: Int, newContent: CellContent) {
+        updateCellRep(row, col) { it.copy(cell = it.cell.copy(content = newContent)) }
+    }
+
+    // Re-evaluates every cell that (directly or transitively) reads [row]/[col],
+    // using a breadth-first walk over the dependency graph so a change to one
+    // cell ripples through the whole formula chain, e.g. A1 -> A2 -> A3.
+    fun recalcDependents(row: Int, col: Int) {
+        val queue = ArrayDeque<Pair<Int, Int>>()
+        queue.addAll(depGraph.getDirectDependents(row to col))
+        val seen = mutableSetOf<Pair<Int, Int>>()
+        while (queue.isNotEmpty()) {
+            val (r, c) = queue.removeFirst()
+            if (!seen.add(r to c)) continue
+            val content = cellReps[r][c].cell.content
+            if (content is CellContent.FormulaContent) {
+                NativeBridge.processCommand("${columnLabel(c)}$r = ${content.value}")
+                val result = NativeBridge.getCellValue(r, c)
+                applyContent(r, c, classifyEngineResult(result, content.value))
+            }
+            queue.addAll(depGraph.getDirectDependents(r to c))
+        }
+    }
+
+    // Rebuilds the native engine's matrix and the dependency graph from the
+    // Kotlin-side cellReps, e.g. after undo/redo or loading a file, where
+    // cellReps changed wholesale without the engine being told about it.
+    fun resyncEngineFromCellReps() {
+        NativeBridge.init(ROWS, COLS)
+        depGraph.clearAll()
+        for (r in 0 until ROWS) for (c in 0 until COLS) {
+            when (val content = cellReps[r][c].cell.content) {
+                is CellContent.NumberContent ->
+                    NativeBridge.processCommand("${columnLabel(c)}$r = ${content.value}")
+                is CellContent.FormulaContent ->
+                    depGraph.setDependencies(r to c, depGraph.parseReferences(content.value))
+                else -> {}
+            }
+        }
+        // Evaluate formulas twice so that forward references (a formula
+        // referring to another formula defined later in the sheet) resolve
+        // correctly once every base value is in place.
+        repeat(2) {
+            for (r in 0 until ROWS) for (c in 0 until COLS) {
+                val content = cellReps[r][c].cell.content
+                if (content is CellContent.FormulaContent) {
+                    NativeBridge.processCommand("${columnLabel(c)}$r = ${content.value}")
+                }
+            }
+        }
+        for (r in 0 until ROWS) for (c in 0 until COLS) {
+            val content = cellReps[r][c].cell.content
+            if (content is CellContent.NumberContent || content is CellContent.FormulaContent) {
+                val formulaSource = (content as? CellContent.FormulaContent)?.value
+                applyContent(r, c, classifyEngineResult(NativeBridge.getCellValue(r, c), formulaSource))
+            }
+        }
+    }
+
+    fun undo() {
+        if (undoStack.isNotEmpty()) {
+            val currentState = cellReps.map { row ->
+                row.map { it.copy(cell = it.cell.copy(content = it.cell.content)) }.toTypedArray()
+            }
+            redoStack.add(currentState)
+            val prevState = undoStack.removeAt(undoStack.size - 1)
+            cellReps.clear()
+            cellReps.addAll(prevState)
+            resyncEngineFromCellReps()
+            syncStyleIndicators()
+            syncFormulaBar()
+        }
+    }
+
+    fun redo() {
+        if (redoStack.isNotEmpty()) {
+            val currentState = cellReps.map { row ->
+                row.map { it.copy(cell = it.cell.copy(content = it.cell.content)) }.toTypedArray()
+            }
+            undoStack.add(currentState)
+            val nextState = redoStack.removeAt(redoStack.size - 1)
+            cellReps.clear()
+            cellReps.addAll(nextState)
+            resyncEngineFromCellReps()
+            syncStyleIndicators()
+            syncFormulaBar()
+        }
+    }
+
+    fun copy() {
+        val minRow = minOf(selectionAnchorRow, selectedRow)
+        val maxRow = maxOf(selectionAnchorRow, selectedRow)
+        val minCol = minOf(selectionAnchorCol, selectedCol)
+        val maxCol = maxOf(selectionAnchorCol, selectedCol)
+        clipboardBlock = Array(maxRow - minRow + 1) { r ->
+            Array(maxCol - minCol + 1) { c ->
+                val src = cellReps[minRow + r][minCol + c]
+                src.copy(cell = src.cell.copy(content = src.cell.content))
+            }
+        }
+    }
+
+    fun paste() {
+        val block = clipboardBlock ?: return
+        pushUndo()
+        val destRow0 = selectedRow
+        val destCol0 = selectedCol
+        for (r in block.indices) {
+            val destRow = destRow0 + r
+            if (destRow !in 0 until ROWS) continue
+            for (c in block[r].indices) {
+                val destCol = destCol0 + c
+                if (destCol !in 0 until COLS) continue
+                val src = block[r][c]
+                updateCellRep(destRow, destCol) {
+                    it.copy(
+                        cell = it.cell.copy(content = src.cell.content),
+                        bold = src.bold,
+                        italic = src.italic,
+                        underline = src.underline,
+                        strike = src.strike,
+                        fontColor = src.fontColor,
+                        backgroundColor = src.backgroundColor,
+                        textAlign = src.textAlign,
+                        wrapText = src.wrapText
+                    )
+                }
+
+                // Mirror the pasted value into the native engine so formulas
+                // elsewhere that reference this cell see the new value, and
+                // keep the dependency graph in sync. Note: formula text is
+                // copied verbatim (no relative-reference shifting).
+                val colLetter = columnLabel(destCol)
+                when (val content = src.cell.content) {
+                    is CellContent.NumberContent -> {
+                        NativeBridge.processCommand("$colLetter$destRow = ${content.value}")
+                        depGraph.clearDependencies(destRow to destCol)
+                    }
+                    is CellContent.FormulaContent -> {
+                        val deps = depGraph.parseReferences(content.value)
+                        if (!depGraph.wouldCreateCycle(destRow to destCol, deps)) {
+                            depGraph.setDependencies(destRow to destCol, deps)
+                            NativeBridge.processCommand("$colLetter$destRow = ${content.value}")
+                        }
+                    }
+                    else -> depGraph.clearDependencies(destRow to destCol)
+                }
+            }
+        }
+        syncStyleIndicators()
+        syncFormulaBar()
+        // Recalculate anything downstream of the pasted block.
+        for (r in block.indices) {
+            for (c in block[r].indices) {
+                val destRow = destRow0 + r
+                val destCol = destCol0 + c
+                if (destRow in 0 until ROWS && destCol in 0 until COLS) {
+                    recalcDependents(destRow, destCol)
+                }
+            }
+        }
+    }
+
+    fun saveToCsv(file: File) {
+        val sb = StringBuilder()
+        for (row in 0 until ROWS) {
+            val rowStrings = mutableListOf<String>()
+            for (col in 0 until COLS) {
+                val content = cellReps[row][col].cell.content
+                val value = when (content) {
+                    is CellContent.FormulaContent -> "=${content.value}"
+                    else -> cellReps[row][col].cell.displayValue()
+                }
+                val escaped = if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+                    "\"" + value.replace("\"", "\"\"") + "\""
+                } else {
+                    value
+                }
+                rowStrings.add(escaped)
+            }
+            sb.append(rowStrings.joinToString(",")).append("\n")
+        }
+        file.writeText(sb.toString())
+    }
+
+    fun loadFromCsv(file: File) {
+        if (!file.exists()) return
+        pushUndo()
+        val lines = file.readLines()
+        for (r in 0 until minOf(ROWS, lines.size)) {
+            val cols = lines[r].split(",")
+            for (c in 0 until minOf(COLS, cols.size)) {
+                val value = cols[c].removeSurrounding("\"").replace("\"\"", "\"")
+                val content = getNewContent(r, c, value)
+                val cellRep = cellReps[r][c].copy(
+                    cell = cellReps[r][c].cell.copy(content = content)
+                )
+                cellReps[r] = cellReps[r].toMutableList().also { it[c] = cellRep }.toTypedArray()
+            }
+        }
+        resyncEngineFromCellReps()
+        syncFormulaBar()
+        syncStyleIndicators()
+    }
+
     fun setNewContent(row: Int, col: Int, newContent: CellContent, value: String) {
-        val newCell = cellReps[row][col].copy(
-            cell = cellReps[row][col].cell.copy(content = newContent)
-        )
-        cellReps[row] = cellReps[row].toMutableList()
-            .also { it[col] = newCell }.toTypedArray()
+        pushUndo()
+        applyContent(row, col, newContent)
         formulaText = value
+        // Plain value edit: this cell is no longer (or wasn't) a formula, so
+        // drop any stale dependency bookkeeping, then propagate the new
+        // value to anything downstream that references this cell.
+        depGraph.clearDependencies(row to col)
+        recalcDependents(row, col)
     }
 
     fun commitFormula(row: Int, col: Int, formula: String) {
-        val colLetter = ('A' + col)
-        NativeBridge.processCommand("$colLetter$row = $formula")
-
-        val result = NativeBridge.getCellValue(row, col)
-        val newContent = when {
-            result.isEmpty() -> CellContent.Empty
-            result.startsWith("#ERR") -> CellContent.ErrorContent(result)
-            result.toDoubleOrNull() != null -> CellContent.NumberContent(result.toDouble())
-            else -> CellContent.TextContent(result)
+        val cellKey = row to col
+        val deps = depGraph.parseReferences(formula)
+        if (depGraph.wouldCreateCycle(cellKey, deps)) {
+            depGraph.clearDependencies(cellKey)
+            applyContent(row, col, CellContent.ErrorContent("#CIRCULAR!"))
+            formulaText = "=$formula"
+            return
         }
-        setNewContent(row, col, newContent, result)
+        depGraph.setDependencies(cellKey, deps)
+        NativeBridge.processCommand("${columnLabel(col)}$row = $formula")
+        val result = NativeBridge.getCellValue(row, col)
+        applyContent(row, col, classifyEngineResult(result, formula))
+        formulaText = result
+        recalcDependents(row, col)
+    }
+
+    fun commitPendingEditIfFormula(row: Int, col: Int) {
+        val content = cellReps[row][col].cell.content
+        // A FormulaContent with no cachedResult yet was typed directly into
+        // the grid and never sent to the engine (typing happens keystroke by
+        // keystroke, so it isn't evaluated until the cell loses focus).
+        if (content is CellContent.FormulaContent && content.cachedResult == null) {
+            commitFormula(row, col, content.value)
+        }
+    }
+
+    fun clearSelectionRange() {
+        pushUndo()
+        forEachSelectedCell { r, c ->
+            NativeBridge.processCommand("${columnLabel(c)}$r = 0")
+            depGraph.clearDependencies(r to c)
+            applyContent(r, c, CellContent.Empty)
+        }
+        forEachSelectedCell { r, c -> recalcDependents(r, c) }
+        syncFormulaBar()
+        syncStyleIndicators()
+    }
+
+    fun chooseSaveFile(defaultName: String = currentFile?.name ?: "spreadsheet.csv"): File? {
+        val dialog = FileDialog(Frame(), "Save Spreadsheet", FileDialog.SAVE)
+        dialog.file = defaultName
+        dialog.filenameFilter = FilenameFilter { _, name -> name.endsWith(".csv") }
+        dialog.isVisible = true
+        val name = dialog.file ?: return null
+        val fileName = if (name.endsWith(".csv")) name else "$name.csv"
+        return File(dialog.directory ?: "", fileName)
+    }
+
+    fun chooseOpenFile(): File? {
+        val dialog = FileDialog(Frame(), "Open Spreadsheet", FileDialog.LOAD)
+        dialog.filenameFilter = FilenameFilter { _, name -> name.endsWith(".csv") }
+        dialog.isVisible = true
+        val name = dialog.file ?: return null
+        return File(dialog.directory ?: "", name)
+    }
+
+    fun doSave() {
+        val target = currentFile ?: chooseSaveFile() ?: return
+        saveToCsv(target)
+        currentFile = target
+    }
+
+    fun doSaveAs() {
+        val target = chooseSaveFile() ?: return
+        saveToCsv(target)
+        currentFile = target
+    }
+
+    fun doOpen() {
+        val target = chooseOpenFile() ?: return
+        loadFromCsv(target)
+        currentFile = target
     }
 
     NucleusDecoratedWindowTheme(isDark = true) {
@@ -143,37 +477,68 @@ fun main() = application {
                     strike = strike,
                     wrapText = wrapText,
                     onBoldToggle = {
-                        cellReps[selectedRow][selectedCol].bold = !cellReps[selectedRow][selectedCol].bold
+                        val target = !currentSelection().bold
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(bold = target) } }
                         syncStyleIndicators()
                     },
                     onItalicToggle = {
-                        cellReps[selectedRow][selectedCol].italic = !cellReps[selectedRow][selectedCol].italic
+                        val target = !currentSelection().italic
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(italic = target) } }
                         syncStyleIndicators()
                     },
                     onUnderlineToggle = {
-                        cellReps[selectedRow][selectedCol].underline = !cellReps[selectedRow][selectedCol].underline
+                        val target = !currentSelection().underline
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(underline = target) } }
                         syncStyleIndicators()
                     },
                     onStrikeToggle = {
-                        cellReps[selectedRow][selectedCol].strike = !cellReps[selectedRow][selectedCol].strike
+                        val target = !currentSelection().strike
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(strike = target) } }
                         syncStyleIndicators()
                     },
-                    onTextAlignChange = {
-                        cellReps[selectedRow][selectedCol].textAlign = it
+                    onTextAlignChange = { align ->
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(textAlign = align) } }
                         syncStyleIndicators()
                     },
-                    onWrapTextToggle = { wrapText = it },
-                    onCellTypeChange = {
-                        currentSelection().cell.content = currentSelection().cell.content.convertTo(it)
+                    onWrapTextToggle = { value ->
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(wrapText = value) } }
+                        wrapText = value
                     },
-                    onColorSelected = {
-                        cellReps[selectedRow][selectedCol].fontColor = it
+                    onCellTypeChange = { type ->
+                        pushUndo()
+                        forEachSelectedCell { r, c ->
+                            val newContent = cellReps[r][c].cell.content.convertTo(type)
+                            if (newContent !is CellContent.FormulaContent) {
+                                depGraph.clearDependencies(r to c)
+                            }
+                            applyContent(r, c, newContent)
+                        }
+                        forEachSelectedCell { r, c -> recalcDependents(r, c) }
+                    },
+                    onColorSelected = { color ->
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(fontColor = color) } }
                         syncStyleIndicators()
                     },
-                    onBackgroundColorSelected = {
-                        cellReps[selectedRow][selectedCol].backgroundColor = it
+                    onBackgroundColorSelected = { color ->
+                        pushUndo()
+                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(backgroundColor = color) } }
                         syncStyleIndicators()
                     },
+                    onSave = { doSave() },
+                    onSaveAs = { doSaveAs() },
+                    onLoad = { doOpen() },
+                    onUndo = { undo() },
+                    onRedo = { redo() },
+                    onCopy = { copy() },
+                    onPaste = { paste() },
+                    onClear = { clearSelectionRange() },
                     fontColor = fontColor,
                     backgroundColor = backgroundColor
                 )
@@ -188,6 +553,7 @@ fun main() = application {
                         val col = selectedCol
                         val isFormula = formulaText.startsWith("=")
 
+                        pushUndo()
                         when {
                             isFormula -> {
                                 // Remove leading `=` before sending to C
@@ -199,20 +565,14 @@ fun main() = application {
                                 val newContent = if (formulaText.isEmpty()) {
                                     CellContent.Empty
                                 } else if (numberValue != null) {
-                                    val colLetter = ('A' + col)
-                                    NativeBridge.processCommand("$colLetter$row = $numberValue")
+                                    NativeBridge.processCommand("${columnLabel(col)}$row = $numberValue")
                                     CellContent.NumberContent(numberValue)
                                 } else {
                                     CellContent.TextContent(formulaText)
                                 }
-
-                                val newCell = cellReps[row][col].copy(
-                                    cell = cellReps[row][col].cell.copy(
-                                        content = newContent
-                                    )
-                                )
-                                cellReps[row] = cellReps[row].toMutableList()
-                                    .also { it[col] = newCell }.toTypedArray()
+                                depGraph.clearDependencies(row to col)
+                                applyContent(row, col, newContent)
+                                recalcDependents(row, col)
                             }
                         }
                     },
@@ -231,10 +591,25 @@ fun main() = application {
                     }.toTypedArray(),
                     selectedRow = selectedRow,
                     selectedCol = selectedCol,
+                    selectionAnchorRow = selectionAnchorRow,
+                    selectionAnchorCol = selectionAnchorCol,
                     onCellSelected = { row, col ->
                         if (row < 0 || col < 0) return@SpreadsheetGrid
+                        commitPendingEditIfFormula(selectedRow, selectedCol)
                         selectedRow = row
                         selectedCol = col
+                        selectionAnchorRow = row
+                        selectionAnchorCol = col
+                        syncFormulaBar()
+                        syncStyleIndicators()
+                    },
+                    onSelectionExtend = { row, col ->
+                        val clampedRow = row.coerceIn(0, ROWS - 1)
+                        val clampedCol = col.coerceIn(0, COLS - 1)
+                        commitPendingEditIfFormula(selectedRow, selectedCol)
+                        selectedRow = clampedRow
+                        selectedCol = clampedCol
+                        // anchor stays put; only the focus cell moves, growing the range
                         syncFormulaBar()
                         syncStyleIndicators()
                     },

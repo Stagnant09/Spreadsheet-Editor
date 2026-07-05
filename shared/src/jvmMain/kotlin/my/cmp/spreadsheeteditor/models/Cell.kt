@@ -12,7 +12,7 @@ data class Cell(
             is CellContent.TextContent    -> c.value
             is CellContent.FormulaContent -> c.cachedResult?.toString() ?: c.value
             is CellContent.BooleanContent -> if (c.value) "TRUE" else "FALSE"
-            is CellContent.ErrorContent   -> "#ERR: ${c.value}"
+            is CellContent.ErrorContent   -> c.value
         }
     }
 }

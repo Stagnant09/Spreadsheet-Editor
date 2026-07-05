@@ -66,8 +66,28 @@ typedef struct {
     int         pos;
     Token       cur;
     Matrix*     matrix;
-    int         error;    /* set on any parse/eval error */
+    int         error;      /* set on any parse/eval error */
+    int         err_code;   /* ERR_GENERIC / ERR_DIV0 / ERR_REF, see Cell.h */
 } Parser;
+
+/* Raise an error on the parser, keeping the most specific code already set */
+static void raise_error(Parser* p, int code) {
+    p->error = 1;
+    if (p->err_code == 0) p->err_code = code;
+}
+
+/* ─── multi-letter column decoding ──────────────────────────────────────
+ * Bijective base-26 decoding so that A=0 .. Z=25, AA=26, AB=27, ...
+ * This matches the historical single-letter behaviour (A-Z => 0-25)
+ * while allowing arbitrarily wide sheets (AA, AB, ..., ZZ, AAA, ...).
+ */
+static int col_letters_to_index(const char* letters, int len) {
+    long idx = 0;
+    for (int i = 0; i < len; i++) {
+        idx = idx * 26 + (toupper((unsigned char)letters[i]) - 'A' + 1);
+    }
+    return (int)(idx - 1);
+}
 
 /* ─── lexer ─────────────────────────────────────────────────────────────── */
 
@@ -119,9 +139,9 @@ static void next_token(Parser* p) {
             col_chars++;
         if (col_chars > 0 && col_chars < len &&
             isdigit((unsigned char)p->cur.ident[col_chars])) {
-            /* Treat as cell: only single-letter column supported for now */
+            /* Treat as cell: any number of leading letters (A, Z, AA, AB, ...) */
             p->cur.kind = TOK_CELL;
-            p->cur.cx   = toupper((unsigned char)p->cur.ident[0]) - 'A';
+            p->cur.cx   = col_letters_to_index(p->cur.ident, col_chars);
             p->cur.cy   = atoi(p->cur.ident + col_chars);
         } else {
             p->cur.kind = TOK_IDENT;
@@ -133,7 +153,7 @@ static void next_token(Parser* p) {
     }
 
     printf("Unexpected character: '%c'\n", c);
-    p->error = 1;
+    raise_error(p, ERR_GENERIC);
     p->cur.kind = TOK_EOF;
 }
 
@@ -141,7 +161,7 @@ static int peek(Parser* p) { return p->cur.kind; }
 static int eat(Parser* p, TokKind k) {
     if (p->cur.kind != k) {
         printf("Parse error: unexpected token '%s'\n", p->cur.ident);
-        p->error = 1;
+        raise_error(p, ERR_GENERIC);
         return 0;
     }
     next_token(p);
@@ -161,6 +181,12 @@ static double read_cell(Parser* p, int cx, int cy) {
     if (cx >= p->matrix->cols || cy >= p->matrix->rows)
         expand(p->matrix, cy + 1, cx + 1);
     Cell* cell = &p->matrix->cells[cy][cx];
+    if (cell->type == 5) {
+        /* Reading a cell that already holds an error cascades the error
+         * up to whatever formula references it. */
+        raise_error(p, ERR_REF);
+        return 0.0;
+    }
     return _cell_val(cell);
 }
 
@@ -272,14 +298,14 @@ static double parse_primary(Parser* p) {
             if (strcmp(fname, AGG_TABLE[a].name) != 0) continue;
 
             /* First arg must be a cell */
-            if (peek(p) != TOK_CELL) { p->error = 1; return 0.0; }
+            if (peek(p) != TOK_CELL) { raise_error(p, ERR_GENERIC); return 0.0; }
             int sx = p->cur.cx, sy = p->cur.cy;
             next_token(p);
 
             /* Range  A0:A4 */
             if (peek(p) == TOK_COLON) {
                 next_token(p);
-                if (peek(p) != TOK_CELL) { p->error = 1; return 0.0; }
+                if (peek(p) != TOK_CELL) { raise_error(p, ERR_GENERIC); return 0.0; }
                 int ex = p->cur.cx, ey = p->cur.cy;
                 next_token(p);
                 eat(p, TOK_RPAREN);
@@ -305,7 +331,7 @@ static double parse_primary(Parser* p) {
             /* Two-cell  SUB(A0, B0) */
             if (peek(p) == TOK_COMMA) {
                 next_token(p);
-                if (peek(p) != TOK_CELL) { p->error = 1; return 0.0; }
+                if (peek(p) != TOK_CELL) { raise_error(p, ERR_GENERIC); return 0.0; }
                 int ex = p->cur.cx, ey = p->cur.cy;
                 next_token(p);
                 eat(p, TOK_RPAREN);
@@ -342,10 +368,10 @@ static double parse_primary(Parser* p) {
         /* ── Collective map  (range → in-place transform) ─── */
         for (int cm = 0; cm < COLLMAP_TABLE_LEN; cm++) {
             if (strcmp(fname, COLLMAP_TABLE[cm].name) != 0) continue;
-            if (peek(p) != TOK_CELL) { p->error = 1; return 0.0; }
+            if (peek(p) != TOK_CELL) { raise_error(p, ERR_GENERIC); return 0.0; }
             int sx = p->cur.cx, sy = p->cur.cy; next_token(p);
             eat(p, TOK_COLON);
-            if (peek(p) != TOK_CELL) { p->error = 1; return 0.0; }
+            if (peek(p) != TOK_CELL) { raise_error(p, ERR_GENERIC); return 0.0; }
             int ex = p->cur.cx, ey = p->cur.cy; next_token(p);
             eat(p, TOK_RPAREN);
 
@@ -363,12 +389,12 @@ static double parse_primary(Parser* p) {
         }
 
         printf("Unknown function: %s\n", fname);
-        p->error = 1;
+        raise_error(p, ERR_GENERIC);
         return 0.0;
     }
 
     printf("Parse error: unexpected token kind %d\n", peek(p));
-    p->error = 1;
+    raise_error(p, ERR_GENERIC);
     return 0.0;
 }
 
@@ -409,7 +435,7 @@ static double parse_term(Parser* p) {
         if (op == TOK_STAR) {
             v *= rhs;
         } else {
-            if (rhs == 0.0) { printf("Division by zero\n"); p->error = 1; return 0.0; }
+            if (rhs == 0.0) { printf("Division by zero\n"); raise_error(p, ERR_DIV0); return 0.0; }
             v /= rhs;
         }
     }
@@ -460,8 +486,10 @@ void process_command(Matrix* matrix, char* command) {
         printf("Invalid target cell: %s\n", t);
         return;
     }
-    int tx = toupper((unsigned char)t[0]) - 'A';
-    int ty = atoi(t + 1);
+    int col_chars = 0;
+    while (isalpha((unsigned char)t[col_chars])) col_chars++;
+    int tx = col_letters_to_index(t, col_chars);
+    int ty = atoi(t + col_chars);
     if (tx < 0 || ty < 0) {
         printf("Invalid target cell: %s\n", t);
         return;
@@ -473,21 +501,28 @@ void process_command(Matrix* matrix, char* command) {
 
     /* ── Run the recursive-descent parser ── */
     Parser p = {
-        .src    = expr,
-        .pos    = 0,
-        .matrix = matrix,
-        .error  = 0,
+        .src      = expr,
+        .pos      = 0,
+        .matrix   = matrix,
+        .error    = 0,
+        .err_code = 0,
     };
     next_token(&p);   /* prime the token stream */
     double result = parse_expr(&p);
 
-    if (p.error) {
-        printf("Expression evaluation failed.\n");
-        return;
-    }
-
     /* Ensure target cell exists */
     expand(matrix, ty + 1, tx + 1);
+
+    if (p.error) {
+        printf("Expression evaluation failed.\n");
+        /* Write a typed error into the cell instead of leaving it silently
+         * unchanged, so the UI can surface #DIV/0!, #REF!, #ERR!, etc. */
+        matrix->cells[ty][tx].x    = tx;
+        matrix->cells[ty][tx].y    = ty;
+        matrix->cells[ty][tx].type = 5;
+        matrix->cells[ty][tx].content.value = p.err_code ? p.err_code : ERR_GENERIC;
+        return;
+    }
     matrix->cells[ty][tx].x    = tx;
     matrix->cells[ty][tx].y    = ty;
     matrix->cells[ty][tx].type = 3;

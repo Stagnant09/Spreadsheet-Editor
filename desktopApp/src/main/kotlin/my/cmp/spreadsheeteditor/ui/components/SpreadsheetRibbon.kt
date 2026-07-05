@@ -48,6 +48,14 @@ fun SpreadsheetRibbon(
     onCellTypeChange: (CellContentType) -> Unit,
     onColorSelected: (Color) -> Unit,
     onBackgroundColorSelected: (Color) -> Unit,
+    onSave: () -> Unit,
+    onSaveAs: () -> Unit,
+    onLoad: () -> Unit,
+    onUndo: () -> Unit,
+    onRedo: () -> Unit,
+    onCopy: () -> Unit,
+    onPaste: () -> Unit,
+    onClear: () -> Unit,
     fontColor: Color,
     backgroundColor: Color,
     modifier: Modifier = Modifier
@@ -98,7 +106,7 @@ fun SpreadsheetRibbon(
                                 )
                             },
                             label = "Open",
-                            onClick = {},
+                            onClick = onLoad,
                             textColor = Color.White
                         )
                     }
@@ -115,7 +123,7 @@ fun SpreadsheetRibbon(
                                 )
                             },
                             label = "Save",
-                            onClick = {},
+                            onClick = onSave,
                             textColor = Color.White
                         )
                     }
@@ -125,7 +133,7 @@ fun SpreadsheetRibbon(
                         verticalArrangement = Arrangement.SpaceEvenly,
                         modifier = Modifier.fillMaxHeight().padding(horizontal = 2.dp),
                     ) {
-                        SmallRibbonButton(Icons.Default.Share, "Save As", onClick = {})
+                        SmallRibbonButton(Icons.Default.Share, "Save As", onClick = onSaveAs)
                         SmallRibbonButton(io.github.composefluent.icons.Icons.Default.ArrowExportLtr, "Export", onClick = {})
                     }
                 },
@@ -141,12 +149,12 @@ fun SpreadsheetRibbon(
                         SmallRibbonButton(
                             io.github.composefluent.icons.Icons.Default.Copy,
                             "Copy",
-                            onClick = {}
+                            onClick = onCopy
                         )
                         SmallRibbonButton(
                             io.github.composefluent.icons.Icons.Default.ClipboardPaste,
                             "Paste",
-                            onClick = {}
+                            onClick = onPaste
                         )
                     }
                 },
@@ -162,7 +170,7 @@ fun SpreadsheetRibbon(
                         SmallRibbonButton(
                             io.github.composefluent.icons.Icons.Default.Delete,
                             "Clear",
-                            onClick = {})
+                            onClick = onClear)
                     }
                 },
                 {
@@ -173,11 +181,11 @@ fun SpreadsheetRibbon(
                         SmallRibbonButton(
                             io.github.composefluent.icons.Icons.Default.ArrowUndo,
                             "Undo",
-                            onClick = {})
+                            onClick = onUndo)
                         SmallRibbonButton(
                             io.github.composefluent.icons.Icons.Default.ArrowRedo,
                             "Redo",
-                            onClick = {})
+                            onClick = onRedo)
                     }
                 },
             ),

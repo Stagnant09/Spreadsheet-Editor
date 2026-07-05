@@ -47,6 +47,17 @@ Java_my_cmp_spreadsheeteditor_NativeBridge_getCellValue(JNIEnv* env, jobject obj
         case 1: snprintf(buf, sizeof(buf), "%d",    cell->content.value);  break;
         case 2: snprintf(buf, sizeof(buf), "%.4g",  cell->content.fvalue); break;
         case 3: snprintf(buf, sizeof(buf), "%.4g",  cell->content.dvalue); break;
+        case 4:
+            if (cell->content.string != NULL)
+                snprintf(buf, sizeof(buf), "%s", cell->content.string);
+            break;
+        case 5:
+            switch (cell->content.value) {
+                case ERR_DIV0: snprintf(buf, sizeof(buf), "#DIV/0!"); break;
+                case ERR_REF:  snprintf(buf, sizeof(buf), "#REF!");   break;
+                default:       snprintf(buf, sizeof(buf), "#ERR!");  break;
+            }
+            break;
         default: break;
     }
     return (*env)->NewStringUTF(env, buf);
