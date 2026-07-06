@@ -75,7 +75,7 @@ fun SpreadsheetGrid(
         if (extend) onSelectionExtend(targetRow, targetCol) else onCellSelected(targetRow, targetCol)
     }
 
-    Column(modifier = modifier.background(ColBg)) {
+    Column(modifier = modifier.background(SpreadsheetTheme.colors.colBg)) {
 
         // ── Column headers ──────────────────────────────────────────────────
         Row(
@@ -89,8 +89,8 @@ fun SpreadsheetGrid(
                 modifier = Modifier
                     .width(COL_HEADER_WIDTH)
                     .fillMaxHeight()
-                    .background(ColGridHeader)
-                    .border(BorderStroke(0.5.dp, ColGridBorder)),
+                    .background(SpreadsheetTheme.colors.colGridHeader)
+                    .border(BorderStroke(0.5.dp, SpreadsheetTheme.colors.colGridBorder)),
             )
             repeat(COLS) { col ->
                 val isSelected = col in rangeMinCol..rangeMaxCol
@@ -98,13 +98,13 @@ fun SpreadsheetGrid(
                     modifier = Modifier
                         .width(COL_WIDTH)
                         .fillMaxHeight()
-                        .background(if (isSelected) ColSelected else ColGridHeader)
-                        .border(BorderStroke(0.5.dp, ColGridBorder)),
+                        .background(if (isSelected) SpreadsheetTheme.colors.colSelected else SpreadsheetTheme.colors.colGridHeader)
+                        .border(BorderStroke(0.5.dp, SpreadsheetTheme.colors.colGridBorder)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = columnLabel(col),
-                        color = if (isSelected) ColAccent else ColTextMuted,
+                        color = if (isSelected) SpreadsheetTheme.colors.colAccent else SpreadsheetTheme.colors.colTextMuted,
                         fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                     )
@@ -129,13 +129,13 @@ fun SpreadsheetGrid(
                             modifier = Modifier
                                 .width(COL_HEADER_WIDTH)
                                 .fillMaxHeight()
-                                .background(if (rowSelected) ColSelected else ColGridHeader)
-                                .border(BorderStroke(0.5.dp, ColGridBorder)),
+                                .background(if (rowSelected) SpreadsheetTheme.colors.colSelected else SpreadsheetTheme.colors.colGridHeader)
+                                .border(BorderStroke(0.5.dp, SpreadsheetTheme.colors.colGridBorder)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(
                                 text = rowIdx.toString(),
-                                color = if (rowSelected) ColAccent else ColTextMuted,
+                                color = if (rowSelected) SpreadsheetTheme.colors.colAccent else SpreadsheetTheme.colors.colTextMuted,
                                 fontSize = 11.sp,
                                 fontWeight = if (rowSelected) FontWeight.Bold else FontWeight.Normal,
                             )
@@ -152,45 +152,48 @@ fun SpreadsheetGrid(
                                     .fillMaxHeight()
                                     .background(
                                         when {
-                                            isActive -> ColSelected
-                                            isInRange -> ColRangeFill
+                                            isActive -> SpreadsheetTheme.colors.colSelected
+                                            isInRange -> SpreadsheetTheme.colors.colRangeFill
                                             cellValue.backgroundColor != Color.Transparent -> cellValue.backgroundColor
-                                            rowIdx % 2 == 0 -> ColBg
-                                            else -> ColGrid
+                                            rowIdx % 2 == 0 -> SpreadsheetTheme.colors.colBg
+                                            else -> SpreadsheetTheme.colors.colGrid
                                         }
                                     )
-                                    .border(BorderStroke(0.5.dp, ColGridBorder))
-                                    .then(
-                                        if (isInRange) Modifier.drawWithContent {
-                                            drawContent()
-                                            val stroke = 2.dp.toPx()
-                                            val half = stroke / 2f
-                                            if (rowIdx == rangeMinRow) drawLine(
-                                                ColAccent,
-                                                Offset(0f, half),
-                                                Offset(size.width, half),
-                                                stroke
-                                            )
-                                            if (rowIdx == rangeMaxRow) drawLine(
-                                                ColAccent,
-                                                Offset(0f, size.height - half),
-                                                Offset(size.width, size.height - half),
-                                                stroke
-                                            )
-                                            if (colIdx == rangeMinCol) drawLine(
-                                                ColAccent,
-                                                Offset(half, 0f),
-                                                Offset(half, size.height),
-                                                stroke
-                                            )
-                                            if (colIdx == rangeMaxCol) drawLine(
-                                                ColAccent,
-                                                Offset(size.width - half, 0f),
-                                                Offset(size.width - half, size.height),
-                                                stroke
-                                            )
-                                        } else Modifier
-                                    )
+                                    .border(BorderStroke(0.5.dp, SpreadsheetTheme.colors.colGridBorder))
+                                    .run {
+                                        val accent = SpreadsheetTheme.colors.colAccent
+                                        if (isInRange) {
+                                            this.drawWithContent {
+                                                drawContent()
+                                                val stroke = 2.dp.toPx()
+                                                val half = stroke / 2f
+                                                if (rowIdx == rangeMinRow) drawLine(
+                                                    accent,
+                                                    Offset(0f, half),
+                                                    Offset(size.width, half),
+                                                    stroke
+                                                )
+                                                if (rowIdx == rangeMaxRow) drawLine(
+                                                    accent,
+                                                    Offset(0f, size.height - half),
+                                                    Offset(size.width, size.height - half),
+                                                    stroke
+                                                )
+                                                if (colIdx == rangeMinCol) drawLine(
+                                                    accent,
+                                                    Offset(half, 0f),
+                                                    Offset(half, size.height),
+                                                    stroke
+                                                )
+                                                if (colIdx == rangeMaxCol) drawLine(
+                                                    accent,
+                                                    Offset(size.width - half, 0f),
+                                                    Offset(size.width - half, size.height),
+                                                    stroke
+                                                )
+                                            }
+                                        } else this
+                                    }
                                     .clickable { onCellSelected(rowIdx, colIdx) }
                                     .onKeyEvent { event ->                          // intercept keystrokes
                                         if (NAVIGATION_CHARS.contains(event.key)) {
@@ -249,7 +252,7 @@ fun SpreadsheetGrid(
                                             .focusRequester(focusRequester),
                                         textStyle = getTextStyle(cellValue),
                                         singleLine = true,
-                                        cursorBrush = SolidColor(ColAccent),
+                                        cursorBrush = SolidColor(SpreadsheetTheme.colors.colAccent),
                                     )
                                     LaunchedEffect(true) {
                                         focusRequester.requestFocus()
@@ -269,7 +272,7 @@ fun SpreadsheetGrid(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
-                                            .border(BorderStroke(1.5.dp, ColAccent)),
+                                            .border(BorderStroke(1.5.dp, SpreadsheetTheme.colors.colAccent)),
                                     )
                                 }
                             }

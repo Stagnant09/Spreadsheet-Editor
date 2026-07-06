@@ -22,9 +22,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import my.cmp.spreadsheeteditor.ui.theme.ColAccent
-import my.cmp.spreadsheeteditor.ui.theme.ColText
-import my.cmp.spreadsheeteditor.ui.theme.ColTextMuted
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 
 /** A ribbon entry is a basic clickable column that contains an icon and a label,
  * centered horizontally and vertically. It resembles the ordinary available large
@@ -60,7 +58,7 @@ fun SmallRibbonButton(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = ColText,
+    tint: Color = SpreadsheetTheme.colors.colText,
 ) {
     Column(
         modifier = modifier
@@ -77,7 +75,7 @@ fun SmallRibbonButton(
             modifier = Modifier.size(18.dp)
         )
         Spacer(Modifier.height(2.dp))
-        Text(label, color = ColTextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = SpreadsheetTheme.colors.colTextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -89,8 +87,8 @@ fun ToggleRibbonButton(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bg = if (toggled) ColAccent.copy(alpha = 0.25f) else Color.Transparent
-    val tint = if (toggled) ColAccent else ColText
+    val bg = if (toggled) SpreadsheetTheme.colors.colAccent.copy(alpha = 0.25f) else Color.Transparent
+    val tint = if (toggled) SpreadsheetTheme.colors.colAccent else SpreadsheetTheme.colors.colText
     Box(
         modifier = modifier
             .size(30.dp)
@@ -112,7 +110,7 @@ fun ToggleRibbonButton(
 fun RibbonSectionLabel(text: String) {
     Text(
         text = text,
-        color = ColTextMuted,
+        color = SpreadsheetTheme.colors.colTextMuted,
         fontSize = 9.sp,
         fontWeight = FontWeight.Medium,
         modifier = Modifier

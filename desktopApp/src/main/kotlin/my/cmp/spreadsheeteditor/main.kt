@@ -23,9 +23,7 @@ import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
 import java.io.File
 import java.util.*
 import my.cmp.spreadsheeteditor.ui.components.*
-import my.cmp.spreadsheeteditor.ui.theme.ColBg
-import my.cmp.spreadsheeteditor.ui.theme.ColText
-import my.cmp.spreadsheeteditor.ui.theme.titleBarGradient
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 import my.cmp.spreadsheeteditor.utils.FormulaDependencyGraph
 import my.cmp.spreadsheeteditor.utils.columnLabel
 import my.cmp.spreadsheeteditor.utils.getNewContent
@@ -118,7 +116,7 @@ fun main() = application {
     var wrapText by remember { mutableStateOf(false) }
     var textAlign by remember { mutableStateOf(TextAlign.Left) }
 
-    var fontColor by remember { mutableStateOf(ColText) }
+    var fontColor by remember { mutableStateOf(Color.Unspecified) }
     var backgroundColor by remember { mutableStateOf(Color.Transparent) }
 
     fun syncStyleIndicators() {
@@ -439,22 +437,23 @@ fun main() = application {
     }
 
     NucleusDecoratedWindowTheme(isDark = true) {
-        DecoratedWindow(
-            onCloseRequest = ::exitApplication,
-            title = "Spreadsheet Editor",
-        ) {
-            Column(modifier = Modifier.fillMaxSize().background(ColBg)) {
+        SpreadsheetTheme(isDark = true) {
+            DecoratedWindow(
+                onCloseRequest = ::exitApplication,
+                title = "Spreadsheet Editor",
+            ) {
+                Column(modifier = Modifier.fillMaxSize().background(SpreadsheetTheme.colors.colBg)) {
 
-                // ── Title bar ──────────────────────────────────────────────
-                TitleBar(
-                    backgroundContent = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Brush.horizontalGradient(colorStops = titleBarGradient))
-                        )
-                    }
-                ) { _: DecoratedWindowState ->
+                    // ── Title bar ──────────────────────────────────────────────
+                    TitleBar(
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Brush.horizontalGradient(colorStops = SpreadsheetTheme.colors.titleBarGradient))
+                            )
+                        }
+                    ) { _: DecoratedWindowState ->
                     val isWindows = System.getProperty("os.name").lowercase().contains("windows")
                     Row(
                         modifier = Modifier
@@ -584,7 +583,7 @@ fun main() = application {
                     cells = cellReps.apply {
                         this.forEach { array ->
                             array.forEach { cell ->
-                                if(cell.fontColor == Color.Unspecified) cell.fontColor = ColText
+                                if(cell.fontColor == Color.Unspecified) cell.fontColor = SpreadsheetTheme.colors.colText
                                 if(cell.backgroundColor == Color.Unspecified) cell.backgroundColor = Color.Transparent
                             }
                         }
@@ -627,6 +626,7 @@ fun main() = application {
                     modifier = Modifier.fillMaxSize(),
                 )
             }
+        }
         }
     }
 }

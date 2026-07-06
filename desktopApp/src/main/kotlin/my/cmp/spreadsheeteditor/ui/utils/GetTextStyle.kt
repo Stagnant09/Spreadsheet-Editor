@@ -8,14 +8,15 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 import my.cmp.spreadsheeteditor.models.CellContent
 import my.cmp.spreadsheeteditor.models.CellRepresentation
-import my.cmp.spreadsheeteditor.ui.theme.ColError
-import my.cmp.spreadsheeteditor.ui.theme.ColText
+import androidx.compose.runtime.Composable
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 
+@Composable
 fun getTextStyle(cellValue: CellRepresentation) = TextStyle(
     color = if (cellValue.cell.content is CellContent.ErrorContent) {
-        ColError
+        SpreadsheetTheme.colors.colError
     } else {
-        cellValue.fontColor ?: ColText
+        if (cellValue.fontColor == Color.Unspecified) SpreadsheetTheme.colors.colText else cellValue.fontColor
     },
     fontSize = 12.sp,
     fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,

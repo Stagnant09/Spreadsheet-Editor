@@ -27,7 +27,7 @@ import my.cmp.spreadsheeteditor.models.CellContent
 import my.cmp.spreadsheeteditor.models.CellContentType
 import my.cmp.spreadsheeteditor.models.CellContentType.Companion.toMenuLabel
 import my.cmp.spreadsheeteditor.models.CellRepresentation
-import my.cmp.spreadsheeteditor.ui.theme.*
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 
 @Composable
 fun SpreadsheetRibbon(
@@ -64,10 +64,10 @@ fun SpreadsheetRibbon(
 
     Ribbon(
         modifier = modifier
-            .background(ColRibbon)
+            .background(SpreadsheetTheme.colors.colRibbon)
             .height(120.dp)
             .fillMaxWidth()
-            .border(BorderStroke(1.dp, ColDivider)),
+            .border(BorderStroke(1.dp, SpreadsheetTheme.colors.colDivider)),
         contentUnits = listOf(
             // ── File ──────────────────────────────────────────
             listOf(
@@ -81,7 +81,7 @@ fun SpreadsheetRibbon(
                                 Icon(
                                     imageVector = io.github.composefluent.icons.Icons.Filled.Add,
                                     "New",
-                                    tint = ColText,
+                                    tint = SpreadsheetTheme.colors.colText,
                                     modifier = Modifier.size(32.dp)
                                 )
                             },
@@ -101,7 +101,7 @@ fun SpreadsheetRibbon(
                                 Icon(
                                     io.github.composefluent.icons.Icons.Filled.Edit,
                                     "Open",
-                                    tint = ColText,
+                                    tint = SpreadsheetTheme.colors.colText,
                                     modifier = Modifier.size(32.dp)
                                 )
                             },
@@ -118,7 +118,7 @@ fun SpreadsheetRibbon(
                                 Icon(
                                     io.github.composefluent.icons.Icons.Filled.Save,
                                     "Save",
-                                    tint = ColText,
+                                    tint = SpreadsheetTheme.colors.colText,
                                     modifier = Modifier.size(32.dp)
                                 )
                             },
@@ -279,7 +279,7 @@ fun SpreadsheetRibbon(
                                 SmallRibbonButton(
                                     io.github.composefluent.icons.Icons.Default.ColorFill,
                                     "Fill",
-                                    tint = if (backgroundColor == Color.Transparent) ColText else backgroundColor,
+                                    tint = if (backgroundColor == Color.Transparent) SpreadsheetTheme.colors.colText else backgroundColor,
                                     modifier = Modifier.width(44.dp),
                                     onClick = {
                                         colorPickerVisible = true
@@ -362,7 +362,7 @@ fun SpreadsheetRibbon(
                             Icon(
                                 io.github.composefluent.icons.Icons.Default.MathFormula,
                                 "Function",
-                                tint = ColText,
+                                tint = SpreadsheetTheme.colors.colText,
                                 modifier = Modifier.size(32.dp)
                             )
                         },
@@ -411,7 +411,7 @@ fun SpreadsheetRibbon(
                                         flyoutVisible = false
                                         onCellTypeChange(option)
                                     },
-                                    text = { Text(option.toMenuLabel(), color = ColText) },
+                                    text = { Text(option.toMenuLabel(), color = SpreadsheetTheme.colors.colText) },
                                     colors = ListItemDefaults.defaultListItemColors().copy(
                                         hovered = ListItemDefaults.defaultListItemColors().hovered.copy(
                                             fillColor = Color(0xFF202020)

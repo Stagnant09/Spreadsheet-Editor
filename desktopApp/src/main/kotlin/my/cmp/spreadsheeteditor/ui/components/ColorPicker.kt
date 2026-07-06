@@ -38,7 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
-import my.cmp.spreadsheeteditor.ui.theme.ColBg
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -57,7 +57,7 @@ fun ColorPicker(
             .width(200.dp)
             .height(if (isExpanded) 300.dp else 100.dp)
             .background(
-                color = Color(0xFF303030)
+                color = SpreadsheetTheme.colors.colSurface
             )
             .clip(shape = FluentTheme.shapes.overlay)
     ) {

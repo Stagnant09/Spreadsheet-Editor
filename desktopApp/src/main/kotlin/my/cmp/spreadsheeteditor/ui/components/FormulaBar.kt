@@ -26,12 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import my.cmp.spreadsheeteditor.ui.theme.ColAccent
-import my.cmp.spreadsheeteditor.ui.theme.ColDivider
-import my.cmp.spreadsheeteditor.ui.theme.ColFormulaBar
-import my.cmp.spreadsheeteditor.ui.theme.ColGridBorder
-import my.cmp.spreadsheeteditor.ui.theme.ColSurface
-import my.cmp.spreadsheeteditor.ui.theme.ColText
+import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 
 @Composable
 fun FormulaBar(
@@ -43,8 +38,8 @@ fun FormulaBar(
 ) {
     Row(
         modifier = modifier
-            .background(ColFormulaBar)
-            .border(BorderStroke(1.dp, ColDivider))
+            .background(SpreadsheetTheme.colors.colFormulaBar)
+            .border(BorderStroke(1.dp, SpreadsheetTheme.colors.colDivider))
             .height(32.dp)
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -54,11 +49,11 @@ fun FormulaBar(
             modifier = Modifier
                 .width(64.dp)
                 .fillMaxHeight()
-                .background(ColSurface)
-                .border(BorderStroke(1.dp, ColGridBorder)),
+                .background(SpreadsheetTheme.colors.colSurface)
+                .border(BorderStroke(1.dp, SpreadsheetTheme.colors.colGridBorder)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(cellAddress, color = ColText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(cellAddress, color = SpreadsheetTheme.colors.colText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.width(4.dp))
@@ -66,7 +61,7 @@ fun FormulaBar(
         // fx label
         Text(
             "fx",
-            color = ColAccent,
+            color = SpreadsheetTheme.colors.colAccent,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 8.dp),
@@ -74,7 +69,7 @@ fun FormulaBar(
 
         Divider(
             modifier = Modifier.fillMaxHeight().width(1.dp),
-            color = ColDivider,
+            color = SpreadsheetTheme.colors.colDivider,
         )
 
         Spacer(Modifier.width(6.dp))
@@ -89,9 +84,9 @@ fun FormulaBar(
                     true
                 } else false
             },
-            textStyle = TextStyle(color = ColText, fontSize = 13.sp),
+            textStyle = TextStyle(color = SpreadsheetTheme.colors.colText, fontSize = 13.sp),
             singleLine = true,
-            cursorBrush = SolidColor(ColAccent),
+            cursorBrush = SolidColor(SpreadsheetTheme.colors.colAccent),
         )
     }
 }
