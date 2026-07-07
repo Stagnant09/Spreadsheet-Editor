@@ -16,14 +16,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.filled.Add
 import io.github.composefluent.icons.filled.Edit
 import io.github.composefluent.icons.filled.Save
 import io.github.composefluent.icons.regular.*
-import my.cmp.spreadsheeteditor.models.CellContent
 import my.cmp.spreadsheeteditor.models.CellContentType
 import my.cmp.spreadsheeteditor.models.CellContentType.Companion.toMenuLabel
 import my.cmp.spreadsheeteditor.models.CellRepresentation
@@ -61,6 +59,7 @@ fun SpreadsheetRibbon(
     modifier: Modifier = Modifier
 ) {
     val currentSelection = cellReps[selectedRow][selectedCol]
+    val ribbonFontColor = SpreadsheetTheme.colors.colTextMuted
 
     Ribbon(
         modifier = modifier
@@ -87,7 +86,7 @@ fun SpreadsheetRibbon(
                             },
                             label = "New",
                             onClick = {},
-                            textColor = Color.White
+                            textColor = ribbonFontColor
                         )
                     }
                 },
@@ -107,7 +106,7 @@ fun SpreadsheetRibbon(
                             },
                             label = "Open",
                             onClick = onLoad,
-                            textColor = Color.White
+                            textColor = ribbonFontColor
                         )
                     }
                 },
@@ -124,7 +123,7 @@ fun SpreadsheetRibbon(
                             },
                             label = "Save",
                             onClick = onSave,
-                            textColor = Color.White
+                            textColor = ribbonFontColor
                         )
                     }
                 },
@@ -242,7 +241,7 @@ fun SpreadsheetRibbon(
                                 SmallRibbonButton(
                                     io.github.composefluent.icons.Icons.Default.TextField,
                                     "Text",
-                                    tint = fontColor,
+                                    tint = ribbonFontColor,
                                     modifier = Modifier.width(44.dp),
                                     onClick = {
                                         colorPickerVisible = true
@@ -357,21 +356,6 @@ fun SpreadsheetRibbon(
             // ── Insert ────────────────────────────────────────
             listOf(
                 {
-                    RibbonEntry(
-                        icon = {
-                            Icon(
-                                io.github.composefluent.icons.Icons.Default.MathFormula,
-                                "Function",
-                                tint = SpreadsheetTheme.colors.colText,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        },
-                        label = "Function",
-                        onClick = {},
-                        textColor = Color.White
-                    )
-                },
-                {
                     var flyoutVisible by remember { mutableStateOf(false) }
 
                     Box(
@@ -421,6 +405,54 @@ fun SpreadsheetRibbon(
                             }
                         }
                     }
+                }
+            ),
+
+            listOf(
+                {
+                    RibbonEntry(
+                        icon = {
+                            Icon(
+                                io.github.composefluent.icons.Icons.Default.MathFormula,
+                                "Function",
+                                tint = SpreadsheetTheme.colors.colText,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        },
+                        label = "Function",
+                        onClick = {},
+                        textColor = ribbonFontColor
+                    )
+                },
+                {
+                    RibbonEntry(
+                        icon = {
+                            Icon(
+                                io.github.composefluent.icons.Icons.Default.ArrowSort,
+                                "Sort",
+                                tint = SpreadsheetTheme.colors.colText,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        },
+                        label = "Sort",
+                        onClick = {},
+                        textColor = ribbonFontColor
+                    )
+                },
+                {
+                    RibbonEntry(
+                        icon = {
+                            Icon(
+                                io.github.composefluent.icons.Icons.Default.Filter,
+                                "Filter",
+                                tint = SpreadsheetTheme.colors.colText,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        },
+                        label = "Filter",
+                        onClick = {},
+                        textColor = ribbonFontColor
+                    )
                 }
             )
         )

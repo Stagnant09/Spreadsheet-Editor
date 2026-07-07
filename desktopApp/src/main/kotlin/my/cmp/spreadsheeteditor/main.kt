@@ -1,27 +1,35 @@
 package my.cmp.spreadsheeteditor
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.Interaction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.WindowDecoration
 import androidx.compose.ui.window.application
 import dev.nucleusframework.window.DecoratedWindow
 import dev.nucleusframework.window.DecoratedWindowState
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.TitleBar
-import androidx.compose.ui.graphics.toArgb
-import my.cmp.spreadsheeteditor.models.*
+import io.github.composefluent.component.MenuFlyout
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.filled.Settings
+import my.cmp.spreadsheeteditor.models.Cell
 import my.cmp.spreadsheeteditor.models.Cell.Companion.displayValue
+import my.cmp.spreadsheeteditor.models.CellContent
+import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
-import java.io.File
-import java.util.*
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
 import my.cmp.spreadsheeteditor.utils.FormulaDependencyGraph
@@ -29,14 +37,20 @@ import my.cmp.spreadsheeteditor.utils.columnLabel
 import my.cmp.spreadsheeteditor.utils.getNewContent
 import java.awt.FileDialog
 import java.awt.Frame
+import java.io.File
 import java.io.FilenameFilter
+import java.util.*
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 fun main() = application {
 
+    var isDark by remember { mutableStateOf(true) }
+    var isFlyoutVisible by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         NativeBridge.init(ROWS, COLS)
+        isDark = true
     }
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -436,8 +450,8 @@ fun main() = application {
         currentFile = target
     }
 
-    NucleusDecoratedWindowTheme(isDark = true) {
-        SpreadsheetTheme(isDark = true) {
+    NucleusDecoratedWindowTheme(isDark = isDark) {
+        SpreadsheetTheme(isDark = isDark) {
             DecoratedWindow(
                 onCloseRequest = ::exitApplication,
                 title = "Spreadsheet Editor",
@@ -454,179 +468,264 @@ fun main() = application {
                             )
                         }
                     ) { _: DecoratedWindowState ->
-                    val isWindows = System.getProperty("os.name").lowercase().contains("windows")
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize(0.9f)
-                            .padding(start = if (isWindows) 80.dp else 0.dp, end = if (isWindows) 200.dp else 0.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("Spreadsheet Editor", color = Color.White, fontWeight = FontWeight.SemiBold)
-                    }
-                }
+                        // NOTE: previously this block wrapped everything in a raw
+                        // Row(Modifier.fillMaxSize().padding(start = .., end = ..))
+                        // with hand-guessed dp values meant to dodge the native
+                        // window control buttons (min/max/close). TitleBar already
+                        // reserves that region itself — the guessed padding fought
+                        // it and is what was clipping the close button. Using
+                        // Modifier.align(...) directly on each child, as below, is
+                        // the correct way to lay out content inside TitleBarScope.
 
-                // ── Ribbon ────────────────────────────────────────────────
-                SpreadsheetRibbon(
-                    cellReps = cellReps,
-                    selectedRow = selectedRow,
-                    selectedCol = selectedCol,
-                    bold = bold,
-                    italic = italic,
-                    underline = underline,
-                    strike = strike,
-                    wrapText = wrapText,
-                    onBoldToggle = {
-                        val target = !currentSelection().bold
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(bold = target) } }
-                        syncStyleIndicators()
-                    },
-                    onItalicToggle = {
-                        val target = !currentSelection().italic
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(italic = target) } }
-                        syncStyleIndicators()
-                    },
-                    onUnderlineToggle = {
-                        val target = !currentSelection().underline
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(underline = target) } }
-                        syncStyleIndicators()
-                    },
-                    onStrikeToggle = {
-                        val target = !currentSelection().strike
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(strike = target) } }
-                        syncStyleIndicators()
-                    },
-                    onTextAlignChange = { align ->
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(textAlign = align) } }
-                        syncStyleIndicators()
-                    },
-                    onWrapTextToggle = { value ->
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(wrapText = value) } }
-                        wrapText = value
-                    },
-                    onCellTypeChange = { type ->
-                        pushUndo()
-                        forEachSelectedCell { r, c ->
-                            val newContent = cellReps[r][c].cell.content.convertTo(type)
-                            if (newContent !is CellContent.FormulaContent) {
-                                depGraph.clearDependencies(r to c)
+                        // Settings gear, start-aligned.
+                        Box(modifier = Modifier.align(Alignment.Start)) {
+                            IconButton(onClick = { isFlyoutVisible = true }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Settings,
+                                    contentDescription = "Settings",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
-                            applyContent(r, c, newContent)
-                        }
-                        forEachSelectedCell { r, c -> recalcDependents(r, c) }
-                    },
-                    onColorSelected = { color ->
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(fontColor = color) } }
-                        syncStyleIndicators()
-                    },
-                    onBackgroundColorSelected = { color ->
-                        pushUndo()
-                        forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(backgroundColor = color) } }
-                        syncStyleIndicators()
-                    },
-                    onSave = { doSave() },
-                    onSaveAs = { doSaveAs() },
-                    onLoad = { doOpen() },
-                    onUndo = { undo() },
-                    onRedo = { redo() },
-                    onCopy = { copy() },
-                    onPaste = { paste() },
-                    onClear = { clearSelectionRange() },
-                    fontColor = fontColor,
-                    backgroundColor = backgroundColor
-                )
-
-                // ── Formula bar ───────────────────────────────────────────
-                FormulaBar(
-                    cellAddress = cellReps.toTypedArray()[selectedRow][selectedCol].cellAddress(),
-                    formula = formulaText,
-                    onFormulaChange = { formulaText = it },
-                    onCommit = {
-                        val row = selectedRow
-                        val col = selectedCol
-                        val isFormula = formulaText.startsWith("=")
-
-                        pushUndo()
-                        when {
-                            isFormula -> {
-                                // Remove leading `=` before sending to C
-                                commitFormula(row, col, formulaText.drop(1))
-                            }
-
-                            else -> {
-                                val numberValue = formulaText.toDoubleOrNull()
-                                val newContent = if (formulaText.isEmpty()) {
-                                    CellContent.Empty
-                                } else if (numberValue != null) {
-                                    NativeBridge.processCommand("${columnLabel(col)}$row = $numberValue")
-                                    CellContent.NumberContent(numberValue)
-                                } else {
-                                    CellContent.TextContent(formulaText)
+                            
+                            // MenuFlyout is an anchored popup off this Box — it
+                            // handles its own placement. The old code wrapped it in
+                            // an extra Box(Modifier.padding(top = 40.dp)), which is
+                            // NOT a popup; that Box just overflowed in normal layout
+                            // flow from wherever the (broken) parent Row placed the
+                            // gear button, landing top-left and overlapping the
+                            // ribbon. Removing that wrapper fixes the placement.
+                            MenuFlyout(
+                                modifier = Modifier.offset(x = 100.dp),
+                                visible = isFlyoutVisible,
+                                onDismissRequest = { isFlyoutVisible = false }
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .width(220.dp)
+                                        .background(
+                                            color = SpreadsheetTheme.colors.colSurface,
+                                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {} // Consume clicks to prevent dismissal
+                                        )
+                                        .padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text(
+                                        text = "Settings",
+                                        style = MaterialTheme.typography.subtitle2,
+                                        color = SpreadsheetTheme.colors.colText
+                                    )
+                                    Divider(color = SpreadsheetTheme.colors.colDivider)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null
+                                            ) { isDark = !isDark }
+                                        ) {
+                                            Text(
+                                                "Dark Mode",
+                                                color = SpreadsheetTheme.colors.colText,
+                                                style = MaterialTheme.typography.body2
+                                            )
+                                            Switch(
+                                                checked = isDark,
+                                                onCheckedChange = { isDark = it },
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = SpreadsheetTheme.colors.colAccent,
+                                                    checkedTrackColor = SpreadsheetTheme.colors.colAccent.copy(alpha = 0.5f)
+                                                ),
+                                            )
+                                        }
+                                    }
                                 }
-                                depGraph.clearDependencies(row to col)
-                                applyContent(row, col, newContent)
-                                recalcDependents(row, col)
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                )
 
-                // ── Spreadsheet grid ──────────────────────────────────────
-                SpreadsheetGrid(
-                    cells = cellReps.apply {
-                        this.forEach { array ->
-                            array.forEach { cell ->
-                                if(cell.fontColor == Color.Unspecified) cell.fontColor = SpreadsheetTheme.colors.colText
-                                if(cell.backgroundColor == Color.Unspecified) cell.backgroundColor = Color.Transparent
+                        // Title, centered within the safe area TitleBar computes
+                        // around the control buttons.
+                        Text(
+                            "Spreadsheet Editor",
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.body1
+                        )
+                    }
+
+                    // ── Ribbon ────────────────────────────────────────────────
+                    SpreadsheetRibbon(
+                        cellReps = cellReps,
+                        selectedRow = selectedRow,
+                        selectedCol = selectedCol,
+                        bold = bold,
+                        italic = italic,
+                        underline = underline,
+                        strike = strike,
+                        wrapText = wrapText,
+                        onBoldToggle = {
+                            val target = !currentSelection().bold
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(bold = target) } }
+                            syncStyleIndicators()
+                        },
+                        onItalicToggle = {
+                            val target = !currentSelection().italic
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(italic = target) } }
+                            syncStyleIndicators()
+                        },
+                        onUnderlineToggle = {
+                            val target = !currentSelection().underline
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(underline = target) } }
+                            syncStyleIndicators()
+                        },
+                        onStrikeToggle = {
+                            val target = !currentSelection().strike
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(strike = target) } }
+                            syncStyleIndicators()
+                        },
+                        onTextAlignChange = { align ->
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(textAlign = align) } }
+                            syncStyleIndicators()
+                        },
+                        onWrapTextToggle = { value ->
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(wrapText = value) } }
+                            wrapText = value
+                        },
+                        onCellTypeChange = { type ->
+                            pushUndo()
+                            forEachSelectedCell { r, c ->
+                                val newContent = cellReps[r][c].cell.content.convertTo(type)
+                                if (newContent !is CellContent.FormulaContent) {
+                                    depGraph.clearDependencies(r to c)
+                                }
+                                applyContent(r, c, newContent)
                             }
-                        }
-                    }.toTypedArray(),
-                    selectedRow = selectedRow,
-                    selectedCol = selectedCol,
-                    selectionAnchorRow = selectionAnchorRow,
-                    selectionAnchorCol = selectionAnchorCol,
-                    onCellSelected = { row, col ->
-                        if (row < 0 || col < 0) return@SpreadsheetGrid
-                        commitPendingEditIfFormula(selectedRow, selectedCol)
-                        selectedRow = row
-                        selectedCol = col
-                        selectionAnchorRow = row
-                        selectionAnchorCol = col
-                        syncFormulaBar()
-                        syncStyleIndicators()
-                    },
-                    onSelectionExtend = { row, col ->
-                        val clampedRow = row.coerceIn(0, ROWS - 1)
-                        val clampedCol = col.coerceIn(0, COLS - 1)
-                        commitPendingEditIfFormula(selectedRow, selectedCol)
-                        selectedRow = clampedRow
-                        selectedCol = clampedCol
-                        // anchor stays put; only the focus cell moves, growing the range
-                        syncFormulaBar()
-                        syncStyleIndicators()
-                    },
-                    onCellEdited = { row, col, value ->
-                        val newContent = getNewContent(row, col, value)
-                        setNewContent(row, col, newContent, value)
-                    },
-                    onKeyStartTyping = { char ->
-                        val row = selectedRow
-                        val col = selectedCol
-                        val seeded = char.toString()
-                        val newContent = getNewContent(row, col, seeded)
-                        setNewContent(row, col, newContent, value = seeded)
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                            forEachSelectedCell { r, c -> recalcDependents(r, c) }
+                        },
+                        onColorSelected = { color ->
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(fontColor = color) } }
+                            syncStyleIndicators()
+                        },
+                        onBackgroundColorSelected = { color ->
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(backgroundColor = color) } }
+                            syncStyleIndicators()
+                        },
+                        onSave = { doSave() },
+                        onSaveAs = { doSaveAs() },
+                        onLoad = { doOpen() },
+                        onUndo = { undo() },
+                        onRedo = { redo() },
+                        onCopy = { copy() },
+                        onPaste = { paste() },
+                        onClear = { clearSelectionRange() },
+                        fontColor = fontColor,
+                        backgroundColor = backgroundColor
+                    )
+
+                    // ── Formula bar ───────────────────────────────────────────
+                    FormulaBar(
+                        cellAddress = cellReps.toTypedArray()[selectedRow][selectedCol].cellAddress(),
+                        formula = formulaText,
+                        onFormulaChange = { formulaText = it },
+                        onCommit = {
+                            val row = selectedRow
+                            val col = selectedCol
+                            val isFormula = formulaText.startsWith("=")
+
+                            pushUndo()
+                            when {
+                                isFormula -> {
+                                    // Remove leading `=` before sending to C
+                                    commitFormula(row, col, formulaText.drop(1))
+                                }
+
+                                else -> {
+                                    val numberValue = formulaText.toDoubleOrNull()
+                                    val newContent = if (formulaText.isEmpty()) {
+                                        CellContent.Empty
+                                    } else if (numberValue != null) {
+                                        NativeBridge.processCommand("${columnLabel(col)}$row = $numberValue")
+                                        CellContent.NumberContent(numberValue)
+                                    } else {
+                                        CellContent.TextContent(formulaText)
+                                    }
+                                    depGraph.clearDependencies(row to col)
+                                    applyContent(row, col, newContent)
+                                    recalcDependents(row, col)
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+
+                    // ── Spreadsheet grid ──────────────────────────────────────
+                    SpreadsheetGrid(
+                        cells = cellReps.apply {
+                            this.forEach { array ->
+                                array.forEach { cell ->
+                                    if(cell.fontColor == Color.Unspecified) cell.fontColor = SpreadsheetTheme.colors.colText
+                                    if(cell.backgroundColor == Color.Unspecified) cell.backgroundColor = Color.Transparent
+                                }
+                            }
+                        }.toTypedArray(),
+                        selectedRow = selectedRow,
+                        selectedCol = selectedCol,
+                        selectionAnchorRow = selectionAnchorRow,
+                        selectionAnchorCol = selectionAnchorCol,
+                        onCellSelected = { row, col ->
+                            if (row < 0 || col < 0) return@SpreadsheetGrid
+                            commitPendingEditIfFormula(selectedRow, selectedCol)
+                            selectedRow = row
+                            selectedCol = col
+                            selectionAnchorRow = row
+                            selectionAnchorCol = col
+                            syncFormulaBar()
+                            syncStyleIndicators()
+                        },
+                        onSelectionExtend = { row, col ->
+                            val clampedRow = row.coerceIn(0, ROWS - 1)
+                            val clampedCol = col.coerceIn(0, COLS - 1)
+                            commitPendingEditIfFormula(selectedRow, selectedCol)
+                            selectedRow = clampedRow
+                            selectedCol = clampedCol
+                            // anchor stays put; only the focus cell moves, growing the range
+                            syncFormulaBar()
+                            syncStyleIndicators()
+                        },
+                        onCellEdited = { row, col, value ->
+                            val newContent = getNewContent(row, col, value)
+                            setNewContent(row, col, newContent, value)
+                        },
+                        onKeyStartTyping = { char ->
+                            val row = selectedRow
+                            val col = selectedCol
+                            val seeded = char.toString()
+                            val newContent = getNewContent(row, col, seeded)
+                            setNewContent(row, col, newContent, value = seeded)
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
-        }
         }
     }
 }
