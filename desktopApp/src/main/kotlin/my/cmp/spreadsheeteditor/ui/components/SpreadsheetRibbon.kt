@@ -360,7 +360,7 @@ fun SpreadsheetRibbon(
 
                     Box(
                         modifier = Modifier.clip(shape = RoundedCornerShape(4.dp))
-                            .background(Color(210, 210, 210))
+                            .background(SpreadsheetTheme.colors.colRibbonHover)
                     ) {
                         SubtleButton(
                             onClick = { flyoutVisible = !flyoutVisible },
@@ -374,9 +374,9 @@ fun SpreadsheetRibbon(
                                 ) {
                                     Text(
                                         currentSelection.cell.content.type.toMenuLabel(),
-                                        color = Color.Black
+                                        color = SpreadsheetTheme.colors.colText
                                     )
-                                    Text("▾", color = Color.Black)
+                                    Text("▾", color = SpreadsheetTheme.colors.colText)
                                 }
                             }
                         )
@@ -385,7 +385,7 @@ fun SpreadsheetRibbon(
                             visible = flyoutVisible,
                             onDismissRequest = { flyoutVisible = false },
                             modifier = Modifier.background(
-                                color = Color(0xFF303030),
+                                color = SpreadsheetTheme.colors.colSurface,
                                 shape = FluentTheme.shapes.overlay
                             )
                         ) {
@@ -398,7 +398,7 @@ fun SpreadsheetRibbon(
                                     text = { Text(option.toMenuLabel(), color = SpreadsheetTheme.colors.colText) },
                                     colors = ListItemDefaults.defaultListItemColors().copy(
                                         hovered = ListItemDefaults.defaultListItemColors().hovered.copy(
-                                            fillColor = Color(0xFF202020)
+                                            fillColor = SpreadsheetTheme.colors.colAccentSoft.copy(alpha = 0.2f)
                                         )
                                     )
                                 )

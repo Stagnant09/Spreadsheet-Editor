@@ -71,7 +71,7 @@ fun ColorPicker(
                     modifier = Modifier
                         .size(18.dp)
                         .background(color = color)
-                        .border(1.dp, Color.Black.copy(alpha = 0.2f))
+                        .border(1.dp, SpreadsheetTheme.colors.colDivider)
                         .clip(RoundedCornerShape(4.dp))
                         .clickable { onColorSelected(color) }
                 )
@@ -89,18 +89,18 @@ fun ColorPicker(
                         .fillMaxWidth()
                         .height(32.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(150, 150, 150))
-                        .border(1.dp, Color.Black.copy(alpha = 0.2f))
+                        .background(SpreadsheetTheme.colors.colRibbonHover)
+                        .border(1.dp, SpreadsheetTheme.colors.colDivider)
                         .clickable { expandTrigger() }
                         .pointerInput(Unit) {
                             detectTapGestures { expandTrigger() }
                         }
-                        .alpha(0.5f),
+                        .alpha(0.8f),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "+",
-                        color = Color.White,
+                        color = SpreadsheetTheme.colors.colText,
                         fontSize = 20.sp
                     )
                 }
@@ -132,7 +132,7 @@ fun ColorPicker(
             ) {
                 Text(
                     text = "Hex: ${color.toHex()}, ${color.toRgb()}",
-                    color = Color.White,
+                    color = SpreadsheetTheme.colors.colTextMuted,
                     fontSize = 12.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.height(18.dp).fillMaxWidth(0.9f)
