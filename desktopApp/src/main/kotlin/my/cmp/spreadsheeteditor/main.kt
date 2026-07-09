@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.application
 import dev.nucleusframework.window.DecoratedWindow
@@ -450,6 +451,7 @@ fun main() = application {
             DecoratedWindow(
                 onCloseRequest = ::exitApplication,
                 title = "Spreadsheet Editor",
+                minimumSize = DpSize(1400.dp, 700.dp)
             ) {
                 Column(modifier = Modifier.fillMaxSize().background(SpreadsheetTheme.colors.colBg)) {
 
