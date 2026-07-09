@@ -50,6 +50,8 @@ fun SpreadsheetRibbon(
     onItalicToggle: () -> Unit,
     onUnderlineToggle: () -> Unit,
     onStrikeToggle: () -> Unit,
+    fontFamily: FontFamily,
+    onFontFamilyChange: (FontFamily) -> Unit,
     onTextAlignChange: (TextAlign) -> Unit,
     onWrapTextToggle: (Boolean) -> Unit,
     onCellTypeChange: (CellContentType) -> Unit,
@@ -298,7 +300,8 @@ fun SpreadsheetRibbon(
                                                         .clip(shape = FluentTheme.shapes.overlay)
                                                 ) {
                                                     Text(
-                                                        "Segoe UI",
+                                                        text = getSystemFonts().find { fontPair -> fontPair.second.toString() == fontFamily.toString() }?.first ?: "Segoe UI",
+                                                        fontFamily = fontFamily,
                                                         color = SpreadsheetTheme.colors.colText
                                                     )
                                                     Text("▾", color = SpreadsheetTheme.colors.colText)
@@ -332,6 +335,7 @@ fun SpreadsheetRibbon(
                                                                 )
                                                                 .clickable {
                                                                     fontFlyoutMenuVisible = false
+                                                                    onFontFamilyChange(fontFamily.second)
                                                                 }
                                                                 .padding(horizontal = 12.dp),
                                                             verticalAlignment = Alignment.CenterVertically,

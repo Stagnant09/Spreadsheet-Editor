@@ -1,6 +1,7 @@
 package my.cmp.spreadsheeteditor.models
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import my.cmp.spreadsheeteditor.utils.columnLabel
@@ -14,6 +15,7 @@ data class CellRepresentation(
     var italic: Boolean = false,
     var underline: Boolean = false,
     var strike: Boolean = false,
+    var fontFamily: FontFamily = FontFamily.Default,
     var fontColor: Color = Color.Unspecified,
     var backgroundColor: Color = Color.Unspecified,
     var textAlign: TextAlign = TextAlign.Left,

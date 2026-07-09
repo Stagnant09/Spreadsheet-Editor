@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpSize
@@ -125,6 +126,7 @@ fun main() = application {
     var strike by remember { mutableStateOf(false) }
     var wrapText by remember { mutableStateOf(false) }
     var textAlign by remember { mutableStateOf(TextAlign.Left) }
+    var fontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
 
     var fontColor by remember { mutableStateOf(Color.Unspecified) }
     var backgroundColor by remember { mutableStateOf(Color.Transparent) }
@@ -136,6 +138,7 @@ fun main() = application {
         strike = currentSelection().strike
         wrapText = currentSelection().wrapText
         textAlign = currentSelection().textAlign
+        fontFamily = currentSelection().fontFamily
         fontColor = currentSelection().fontColor
         backgroundColor = currentSelection().backgroundColor
     }
@@ -635,7 +638,12 @@ fun main() = application {
                         onPaste = { paste() },
                         onClear = { clearSelectionRange() },
                         fontColor = fontColor,
-                        backgroundColor = backgroundColor
+                        backgroundColor = backgroundColor,
+                        fontFamily = fontFamily,
+                        onFontFamilyChange = { fontFamily ->
+                            cellReps.toTypedArray()[selectedRow][selectedCol].fontFamily = fontFamily
+                            syncStyleIndicators()
+                        }
                     )
 
                     // ── Formula bar ───────────────────────────────────────────
