@@ -7,6 +7,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.foundation.VerticalScrollbar
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
@@ -18,11 +22,14 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import io.github.composefluent.FluentTheme
 import io.github.composefluent.component.*
 import io.github.composefluent.icons.filled.Add
@@ -299,8 +306,9 @@ fun SpreadsheetRibbon(
                                                     modifier = Modifier.width(110.dp)
                                                         .clip(shape = FluentTheme.shapes.overlay)
                                                 ) {
+                                                    val defaultFontName = if (System.getProperty("os.name").lowercase().contains("win")) "Segoe UI" else "Noto Sans"
                                                     Text(
-                                                        text = getSystemFonts().find { fontPair -> fontPair.second.toString() == fontFamily.toString() }?.first ?: "Segoe UI",
+                                                        text = getSystemFonts().find { fontPair -> fontPair.second.toString() == fontFamily.toString() }?.first ?: defaultFontName,
                                                         fontFamily = fontFamily,
                                                         color = SpreadsheetTheme.colors.colText
                                                     )
@@ -314,38 +322,72 @@ fun SpreadsheetRibbon(
                                             onDismissRequest = { fontFlyoutMenuVisible = false }
                                         ) {
                                             var fontList by remember { mutableStateOf(getSystemFonts()) }
+                                            val listState = rememberLazyListState()
                                             Box(
                                                 modifier = Modifier
                                                     .width(210.dp)
                                                     .height(400.dp)
                                                     .background(SpreadsheetTheme.colors.colSurface)
                                             ) {
-                                                LazyColumn {
-                                                    items(fontList) { fontFamily ->
-                                                        var isHovered by remember { mutableStateOf(false) }
-                                                        Row(
-                                                            modifier = Modifier
-                                                                .height(36.dp)
-                                                                .fillMaxWidth()
-                                                                .onPointerEvent(PointerEventType.Enter) { isHovered = true }
-                                                                .onPointerEvent(PointerEventType.Exit) { isHovered = false }
-                                                                .background(
-                                                                    if (isHovered) SpreadsheetTheme.colors.colRibbonHover
-                                                                    else SpreadsheetTheme.colors.colSurface
+                                                Row {
+                                                    LazyColumn(
+                                                        state = listState,
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        items(fontList) { fontFamily ->
+                                                            var isHovered by remember { mutableStateOf(false) }
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .height(36.dp)
+                                                                    .fillMaxWidth()
+                                                                    .onPointerEvent(PointerEventType.Enter) {
+                                                                        isHovered = true
+                                                                    }
+                                                                    .onPointerEvent(PointerEventType.Exit) {
+                                                                        isHovered = false
+                                                                    }
+                                                                    .background(
+                                                                        if (isHovered) SpreadsheetTheme.colors.colRibbonHover
+                                                                        else SpreadsheetTheme.colors.colSurface
+                                                                    )
+                                                                    .clickable {
+                                                                        fontFlyoutMenuVisible = false
+                                                                        onFontFamilyChange(fontFamily.second)
+                                                                    }
+                                                                    .padding(horizontal = 12.dp),
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                            ) {
+                                                                Text(
+                                                                    text = fontFamily.first,
+                                                                    fontFamily = fontFamily.second,
+                                                                    color = SpreadsheetTheme.colors.colText
                                                                 )
-                                                                .clickable {
-                                                                    fontFlyoutMenuVisible = false
-                                                                    onFontFamilyChange(fontFamily.second)
-                                                                }
-                                                                .padding(horizontal = 12.dp),
-                                                            verticalAlignment = Alignment.CenterVertically,
-                                                        ) {
-                                                            Text(
-                                                                text = fontFamily.first,
-                                                                fontFamily = fontFamily.second,
-                                                                color = SpreadsheetTheme.colors.colText
-                                                            )
+                                                            }
                                                         }
+                                                    }
+
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .fillMaxHeight()
+                                                            .pointerInput(Unit) {
+                                                                awaitPointerEventScope {
+                                                                    while (true) {
+                                                                        awaitPointerEvent(PointerEventPass.Initial)
+                                                                        // just intercepting here is enough to claim priority;
+                                                                        // don't call change.consume() or the scrollbar itself won't get the event
+                                                                    }
+                                                                }
+                                                            }
+                                                    ) {
+                                                        VerticalScrollbar(
+                                                            modifier = Modifier.fillMaxHeight().zIndex(1f),
+                                                            adapter = rememberScrollbarAdapter(scrollState = listState),
+                                                            style = androidx.compose.foundation.defaultScrollbarStyle().copy(
+                                                                unhoverColor = SpreadsheetTheme.colors.colAccent.copy(alpha = 0.5f),
+                                                                hoverColor = SpreadsheetTheme.colors.colAccent
+                                                            ),
+                                                            interactionSource = remember { MutableInteractionSource() }
+                                                        )
                                                     }
                                                 }
                                             }

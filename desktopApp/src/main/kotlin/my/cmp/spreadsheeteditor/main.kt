@@ -41,7 +41,12 @@ import java.util.*
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
-fun main() = application {
+fun main() {
+    if (System.getProperty("os.name").lowercase().contains("linux")) {
+        System.setProperty("skiko.renderApi", "SOFTWARE")
+        System.setProperty("sun.java2d.opengl", "false")
+    }
+    application {
 
     var isDark by remember { mutableStateOf(true) }
     var isFlyoutVisible by remember { mutableStateOf(false) }
@@ -733,4 +738,5 @@ fun main() = application {
             }
         }
     }
+}
 }

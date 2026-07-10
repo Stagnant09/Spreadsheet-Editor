@@ -62,6 +62,10 @@ compose.desktop {
             packageVersion = "1.0.0"
             appResourcesRootDir.set(project.layout.projectDirectory.dir("build/native"))
         }
-        jvmArgs += "-Djava.library.path=${rootDir}/build/native"
+        val jvmArgsList = mutableListOf("-Djava.library.path=${rootDir}/build/native")
+        if (System.getProperty("os.name").lowercase().contains("linux")) {
+            jvmArgsList.add("-Dskiko.renderApi=SOFTWARE")
+        }
+        jvmArgs += jvmArgsList
     }
 }
