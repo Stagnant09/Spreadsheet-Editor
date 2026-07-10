@@ -132,6 +132,7 @@ fun main() {
     var wrapText by remember { mutableStateOf(false) }
     var textAlign by remember { mutableStateOf(TextAlign.Left) }
     var fontFamily by remember { mutableStateOf<FontFamily>(FontFamily.Default) }
+    var fontSize by remember { mutableStateOf(12f) }
 
     var fontColor by remember { mutableStateOf(Color.Unspecified) }
     var backgroundColor by remember { mutableStateOf(Color.Transparent) }
@@ -144,6 +145,7 @@ fun main() {
         wrapText = currentSelection().wrapText
         textAlign = currentSelection().textAlign
         fontFamily = currentSelection().fontFamily
+        fontSize = currentSelection().fontSize
         fontColor = currentSelection().fontColor
         backgroundColor = currentSelection().backgroundColor
     }
@@ -645,8 +647,14 @@ fun main() {
                         fontColor = fontColor,
                         backgroundColor = backgroundColor,
                         fontFamily = fontFamily,
+                        fontSize = fontSize,
                         onFontFamilyChange = { fontFamily ->
                             cellReps.toTypedArray()[selectedRow][selectedCol].fontFamily = fontFamily
+                            syncStyleIndicators()
+                        },
+                        onFontSizeChange = { newSize ->
+                            pushUndo()
+                            forEachSelectedCell { r, c -> updateCellRep(r, c) { it.copy(fontSize = newSize) } }
                             syncStyleIndicators()
                         }
                     )

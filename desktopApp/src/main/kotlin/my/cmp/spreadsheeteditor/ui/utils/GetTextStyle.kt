@@ -19,7 +19,7 @@ fun getTextStyle(cellValue: CellRepresentation) = TextStyle(
         if (cellValue.fontColor == Color.Unspecified) SpreadsheetTheme.colors.colText else cellValue.fontColor
     },
     fontFamily = cellValue.fontFamily,
-    fontSize = 12.sp,
+    fontSize = cellValue.fontSize.sp,
     fontWeight = if (cellValue.bold) FontWeight.Bold else FontWeight.Normal,
     fontStyle = if (cellValue.italic) FontStyle.Italic else FontStyle.Normal,
     textDecoration = (if (cellValue.underline) TextDecoration.Underline else TextDecoration.None) +

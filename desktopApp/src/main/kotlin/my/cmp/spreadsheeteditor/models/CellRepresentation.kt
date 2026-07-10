@@ -15,6 +15,7 @@ data class CellRepresentation(
     var italic: Boolean = false,
     var underline: Boolean = false,
     var strike: Boolean = false,
+    var fontSize: Float = 12f,
     var fontFamily: FontFamily = FontFamily.Default,
     var fontColor: Color = Color.Unspecified,
     var backgroundColor: Color = Color.Unspecified,

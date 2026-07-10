@@ -59,6 +59,8 @@ fun SpreadsheetRibbon(
     onStrikeToggle: () -> Unit,
     fontFamily: FontFamily,
     onFontFamilyChange: (FontFamily) -> Unit,
+    fontSize: Float,
+    onFontSizeChange: (Float) -> Unit,
     onTextAlignChange: (TextAlign) -> Unit,
     onWrapTextToggle: (Boolean) -> Unit,
     onCellTypeChange: (CellContentType) -> Unit,
@@ -249,7 +251,7 @@ fun SpreadsheetRibbon(
                                         icon = io.github.composefluent.icons.Icons.Default.FontIncrease,
                                         toggled = false,
                                         onToggle = {
-
+                                            onFontSizeChange(fontSize + 1f)
                                         },
                                         label = "Increase Font Size"
                                     )
@@ -257,7 +259,7 @@ fun SpreadsheetRibbon(
                                         icon = io.github.composefluent.icons.Icons.Default.FontDecrease,
                                         toggled = false,
                                         onToggle = {
-
+                                            if (fontSize > 1f) onFontSizeChange(fontSize - 1f)
                                         },
                                         label = "Decrease Font Size"
                                     )
@@ -380,7 +382,7 @@ fun SpreadsheetRibbon(
                                                             }
                                                     ) {
                                                         VerticalScrollbar(
-                                                            modifier = Modifier.fillMaxHeight().zIndex(1f),
+                                                            modifier = Modifier.fillMaxHeight().zIndex(99f),
                                                             adapter = rememberScrollbarAdapter(scrollState = listState),
                                                             style = androidx.compose.foundation.defaultScrollbarStyle().copy(
                                                                 unhoverColor = SpreadsheetTheme.colors.colAccent.copy(alpha = 0.5f),
