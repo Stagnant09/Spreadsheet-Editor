@@ -18,7 +18,8 @@ dependencies {
     implementation("io.github.compose-fluent:fluent:v0.1.0")
     implementation("io.github.compose-fluent:fluent-icons-extended:v0.1.0")
     implementation(libs.androidx.material3.desktop)
-    
+    implementation(kotlin("reflect"))
+
 }
 
 val cmakeConfigure = tasks.register<Exec>("cmakeConfigure") {

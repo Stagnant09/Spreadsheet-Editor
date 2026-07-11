@@ -74,6 +74,7 @@ fun SpreadsheetRibbon(
     onCopy: () -> Unit,
     onPaste: () -> Unit,
     onClear: () -> Unit,
+    onFunctionClick: () -> Unit,
     fontColor: Color,
     backgroundColor: Color,
     modifier: Modifier = Modifier
@@ -653,7 +654,7 @@ fun SpreadsheetRibbon(
                             )
                         },
                         label = "Function",
-                        onClick = {},
+                        onClick = { onFunctionClick() },
                         textColor = ribbonFontColor
                     )
                 },
