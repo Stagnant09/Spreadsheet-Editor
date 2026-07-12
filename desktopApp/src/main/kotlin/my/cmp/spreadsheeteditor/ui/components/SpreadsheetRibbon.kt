@@ -1,16 +1,11 @@
 package my.cmp.spreadsheeteditor.ui.components
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollbarAdapter
-import androidx.compose.foundation.VerticalScrollbar
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
@@ -28,6 +23,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import io.github.composefluent.FluentTheme
@@ -288,8 +284,16 @@ fun SpreadsheetRibbon(
                                         },
                                         label = "Subscript"
                                     )
+                                    ToggleRibbonButton(
+                                        icon = io.github.composefluent.icons.Icons.Default.TextDirectionRotate90Right,
+                                        toggled = false,
+                                        onToggle = {
+
+                                        },
+                                        label = "Orientation"
+                                    )
                                 }
-                                Row(modifier = Modifier.width(150.dp), horizontalArrangement = Arrangement.Center) {
+                                Row(modifier = Modifier.width(200.dp), horizontalArrangement = Arrangement.Start) {
                                     Box(
                                         modifier = Modifier.width(width = 140.dp).clip(shape = RoundedCornerShape(4.dp))
                                             .background(SpreadsheetTheme.colors.colRibbonHover),
@@ -313,7 +317,9 @@ fun SpreadsheetRibbon(
                                                     Text(
                                                         text = getSystemFonts().find { fontPair -> fontPair.second.toString() == fontFamily.toString() }?.first ?: defaultFontName,
                                                         fontFamily = fontFamily,
-                                                        color = SpreadsheetTheme.colors.colText
+                                                        color = SpreadsheetTheme.colors.colText,
+                                                        maxLines = 1,
+                                                        overflow = TextOverflow.Ellipsis
                                                     )
                                                     Text("▾", color = SpreadsheetTheme.colors.colText)
                                                 }
@@ -391,6 +397,89 @@ fun SpreadsheetRibbon(
                                                             ),
                                                             interactionSource = remember { MutableInteractionSource() }
                                                         )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(4.dp))
+
+                                    Box(
+                                        modifier = Modifier.width(width = 50.dp).clip(shape = RoundedCornerShape(4.dp))
+                                            .background(SpreadsheetTheme.colors.colRibbonHover),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        var fontSizeFlyoutMenuVisible by remember { mutableStateOf(false) }
+
+                                        SubtleButton(
+                                            onClick = {
+                                                fontSizeFlyoutMenuVisible = !fontSizeFlyoutMenuVisible
+                                            },
+                                            modifier = Modifier.commandBarButtonSize(),
+                                            content = {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.width(40.dp)
+                                                        .clip(shape = FluentTheme.shapes.overlay)
+                                                ) {
+                                                    Text(
+                                                        text = fontSize.toInt().toString(),
+                                                        color = SpreadsheetTheme.colors.colText
+                                                    )
+                                                    Text("▾", color = SpreadsheetTheme.colors.colText)
+                                                }
+                                            }
+                                        )
+
+                                        MenuFlyout(
+                                            visible = fontSizeFlyoutMenuVisible,
+                                            onDismissRequest = { fontSizeFlyoutMenuVisible = false }
+                                        ) {
+                                            val sizes = listOf(8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72)
+                                            val listState = rememberLazyListState()
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(60.dp)
+                                                    .height(300.dp)
+                                                    .background(SpreadsheetTheme.colors.colSurface)
+                                            ) {
+                                                Row {
+                                                    LazyColumn(
+                                                        state = listState,
+                                                        modifier = Modifier.weight(1f)
+                                                    ) {
+                                                        items(sizes) { size ->
+                                                            var isHovered by remember { mutableStateOf(false) }
+                                                            Row(
+                                                                modifier = Modifier
+                                                                    .height(30.dp)
+                                                                    .fillMaxWidth()
+                                                                    .onPointerEvent(PointerEventType.Enter) {
+                                                                        isHovered = true
+                                                                    }
+                                                                    .onPointerEvent(PointerEventType.Exit) {
+                                                                        isHovered = false
+                                                                    }
+                                                                    .background(
+                                                                        if (isHovered) SpreadsheetTheme.colors.colRibbonHover
+                                                                        else SpreadsheetTheme.colors.colSurface
+                                                                    )
+                                                                    .clickable {
+                                                                        fontSizeFlyoutMenuVisible = false
+                                                                        onFontSizeChange(size.toFloat())
+                                                                    }
+                                                                    .padding(horizontal = 8.dp),
+                                                                verticalAlignment = Alignment.CenterVertically,
+                                                                horizontalArrangement = Arrangement.Center
+                                                            ) {
+                                                                Text(
+                                                                    text = size.toString(),
+                                                                    color = SpreadsheetTheme.colors.colText
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }

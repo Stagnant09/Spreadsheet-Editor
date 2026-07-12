@@ -8,8 +8,6 @@ import my.cmp.spreadsheeteditor.utils.columnLabel
 
 data class CellRepresentation(
     val cell: Cell,
-    val height: Int,
-    val width: Int,
     val isSelected: Boolean,
     var bold: Boolean = false,
     var italic: Boolean = false,
@@ -28,12 +26,8 @@ data class CellRepresentation(
 
     constructor(
         cell: Cell,
-        height: Dp,
-        width: Dp,
     ) : this(
         cell = cell,
-        height = height.value.toInt(),
-        width = width.value.toInt(),
         isSelected = false
     )
 

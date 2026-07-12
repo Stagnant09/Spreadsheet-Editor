@@ -20,6 +20,12 @@ dependencies {
     implementation(libs.androidx.material3.desktop)
     implementation(kotlin("reflect"))
 
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.8.0")
+
+    implementation("org.jetbrains.kotlinx:dataframe:1.0.0-Beta5")
+    implementation("org.jetbrains.kotlinx:kandy-lets-plot:0.8.3")
+
+    implementation("org.apache.poi:poi-ooxml:5.4.0")
 }
 
 val cmakeConfigure = tasks.register<Exec>("cmakeConfigure") {

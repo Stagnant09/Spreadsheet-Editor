@@ -28,8 +28,12 @@ import my.cmp.spreadsheeteditor.models.Cell.Companion.displayValue
 import my.cmp.spreadsheeteditor.models.CellContent
 import my.cmp.spreadsheeteditor.models.CellRepresentation
 import my.cmp.spreadsheeteditor.models.CellRepresentation.Companion.cellAddress
+import my.cmp.spreadsheeteditor.services.CsvService
+import my.cmp.spreadsheeteditor.services.XlsxService
 import my.cmp.spreadsheeteditor.ui.components.*
 import my.cmp.spreadsheeteditor.ui.theme.SpreadsheetTheme
+import my.cmp.spreadsheeteditor.ui.theme.darkColorScheme
+import my.cmp.spreadsheeteditor.ui.theme.lightColorScheme
 import my.cmp.spreadsheeteditor.utils.FormulaDependencyGraph
 import my.cmp.spreadsheeteditor.utils.columnLabel
 import my.cmp.spreadsheeteditor.utils.getNewContent
@@ -60,13 +64,13 @@ fun main() {
             mutableStateListOf(*Array(ROWS) { row ->
                 Array(COLS) { col ->
                     CellRepresentation(
-                        height = ROW_HEIGHT,
-                        width = COL_WIDTH,
                         cell = Cell(row, col)
                     )
                 }
             })
         }
+        val rowHeights = remember { mutableStateListOf(*Array(ROWS) { ROW_HEIGHT }) }
+        val colWidths = remember { mutableStateListOf(*Array(COLS) { COL_WIDTH }) }
         var selectedRow by remember { mutableStateOf(0) }
         var selectedCol by remember { mutableStateOf(0) }
         var selectionAnchorRow by remember { mutableStateOf(0) }
@@ -83,7 +87,7 @@ fun main() {
         var currentFile by remember { mutableStateOf<File?>(null) }
 
         val undoStack = remember { mutableStateListOf<List<Array<CellRepresentation>>>() }
-        var redoStack = remember { mutableStateListOf<List<Array<CellRepresentation>>>() }
+        val redoStack = remember { mutableStateListOf<List<Array<CellRepresentation>>>() }
         var showFunctionDialog by remember { mutableStateOf(false) }
         var dialogTargetRow by remember { mutableStateOf(0) }
         var dialogTargetCol by remember { mutableStateOf(0) }
@@ -151,6 +155,20 @@ fun main() {
             fontSize = currentSelection().fontSize
             fontColor = currentSelection().fontColor
             backgroundColor = currentSelection().backgroundColor
+        }
+
+        LaunchedEffect(isDark) {
+            cellReps.forEachIndexed { r, row ->
+                row.forEachIndexed { c, cell ->
+                    if (cell.fontColor != Color.Unspecified && cell.fontColor != lightColorScheme().colText && cell.fontColor != darkColorScheme().colText) {
+                        // Keep custom color
+                    } else {
+                        // Reset to unspecified so it follows the theme
+                        updateCellRep(r, c) { it.copy(fontColor = Color.Unspecified) }
+                    }
+                }
+            }
+            syncStyleIndicators()
         }
 
         // Converts a raw engine result string into typed cell content. When
@@ -337,45 +355,44 @@ fun main() {
         }
 
         fun saveToCsv(file: File) {
-            val sb = StringBuilder()
-            for (row in 0 until ROWS) {
-                val rowStrings = mutableListOf<String>()
-                for (col in 0 until COLS) {
-                    val content = cellReps[row][col].cell.content
-                    val value = when (content) {
-                        is CellContent.FormulaContent -> "=${content.value}"
-                        else -> cellReps[row][col].cell.displayValue()
-                    }
-                    val escaped = if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-                        "\"" + value.replace("\"", "\"\"") + "\""
-                    } else {
-                        value
-                    }
-                    rowStrings.add(escaped)
-                }
-                sb.append(rowStrings.joinToString(",")).append("\n")
-            }
-            file.writeText(sb.toString())
+            CsvService.saveToCsv(file, cellReps, ROWS, COLS)
         }
 
         fun loadFromCsv(file: File) {
-            if (!file.exists()) return
+            val data = CsvService.loadFromCsv(file) ?: return
             pushUndo()
-            val lines = file.readLines()
-            for (r in 0 until minOf(ROWS, lines.size)) {
-                val cols = lines[r].split(",")
+            for (r in 0 until minOf(ROWS, data.size)) {
+                val cols = data[r]
                 for (c in 0 until minOf(COLS, cols.size)) {
-                    val value = cols[c].removeSurrounding("\"").replace("\"\"", "\"")
+                    val value = cols[c]
                     val content = getNewContent(r, c, value)
                     val cellRep = cellReps[r][c].copy(
                         cell = cellReps[r][c].cell.copy(content = content)
                     )
-                    cellReps[r] = cellReps[r].toMutableList().also { it[c] = cellRep }.toTypedArray()
+                    updateCellRep(r, c) { cellRep }
                 }
             }
             resyncEngineFromCellReps()
             syncFormulaBar()
             syncStyleIndicators()
+        }
+
+        fun saveToXlsx(file: File) {
+            XlsxService.writeXlsx(
+                filePath = file.absolutePath,
+                cellReps = cellReps.toTypedArray().flatten()
+            )
+        }
+
+        fun loadFromXlsx(file: File){
+            val cellReps = XlsxService.readXlsx(file.path)
+            cellReps.forEach { cellRep ->
+                updateCellRep(
+                    cellRep.row, cellRep.column
+                ) {
+                    cellRep
+                }
+            }
         }
 
         fun setNewContent(row: Int, col: Int, newContent: CellContent, value: String) {
@@ -440,7 +457,7 @@ fun main() {
 
         fun chooseOpenFile(): File? {
             val dialog = FileDialog(Frame(), "Open Spreadsheet", FileDialog.LOAD)
-            dialog.filenameFilter = FilenameFilter { _, name -> name.endsWith(".csv") }
+            dialog.filenameFilter = FilenameFilter { _, name -> name.endsWith(".csv") || name.endsWith(".xlsx") }
             dialog.isVisible = true
             val name = dialog.file ?: return null
             return File(dialog.directory ?: "", name)
@@ -448,19 +465,33 @@ fun main() {
 
         fun doSave() {
             val target = currentFile ?: chooseSaveFile() ?: return
-            saveToCsv(target)
+            when (target.extension) {
+                "csv" -> {saveToCsv(target)}
+                "xlsx" -> {saveToXlsx(target)}
+            }
             currentFile = target
         }
 
         fun doSaveAs() {
             val target = chooseSaveFile() ?: return
-            saveToCsv(target)
+            when (target.extension) {
+                "csv" -> {saveToCsv(target)}
+                "xlsx" -> {saveToXlsx(target)}
+            }
             currentFile = target
         }
 
         fun doOpen() {
             val target = chooseOpenFile() ?: return
-            loadFromCsv(target)
+            when (target.extension) {
+                "csv" -> {
+                    loadFromCsv(target)
+                }
+                "xlsx" -> {
+                    loadFromXlsx(target)
+                }
+            }
+
             currentFile = target
         }
 
@@ -719,16 +750,9 @@ fun main() {
 
                             // ── Spreadsheet grid ──────────────────────────────────────
                             SpreadsheetGrid(
-                                cells = cellReps.apply {
-                                    this.forEach { array ->
-                                        array.forEach { cell ->
-                                            if (cell.fontColor == Color.Unspecified) cell.fontColor =
-                                                SpreadsheetTheme.colors.colText
-                                            if (cell.backgroundColor == Color.Unspecified) cell.backgroundColor =
-                                                Color.Transparent
-                                        }
-                                    }
-                                }.toTypedArray(),
+                                cells = cellReps.toTypedArray(),
+                                rowHeights = rowHeights,
+                                colWidths = colWidths,
                                 selectedRow = selectedRow,
                                 selectedCol = selectedCol,
                                 selectionAnchorRow = selectionAnchorRow,
@@ -763,6 +787,16 @@ fun main() {
                                     val seeded = char.toString()
                                     val newContent = getNewContent(row, col, seeded)
                                     setNewContent(row, col, newContent, value = seeded)
+                                },
+                                onRowResized = { idx, height -> rowHeights[idx] = height },
+                                onColResized = { idx, width -> colWidths[idx] = width },
+                                onCellRightClick = { row, col, _ ->
+                                    selectedRow = row
+                                    selectedCol = col
+                                    selectionAnchorRow = row
+                                    selectionAnchorCol = col
+                                    syncFormulaBar()
+                                    syncStyleIndicators()
                                 },
                                 modifier = Modifier.fillMaxSize(),
                             )
