@@ -2,7 +2,7 @@
 
 <img width="1384" height="692" alt="image" src="https://github.com/user-attachments/assets/f852eede-30ea-41af-b5d1-1a0dd47806f4" />
 
-A cross-platform spreadsheet application built with Kotlin Multiplatform and a high-performance calculation engine written in C.
+A cross-platform spreadsheet application built with Jetpack Compose Multiplatform and a high-performance calculation engine written in C.
 
 ## Project Overview
 
