@@ -12,8 +12,10 @@ This project is a modern spreadsheet editor that combines the ease of use of a h
 
 - Interactive Data Grid: A responsive interface for entering and editing data across rows and columns.
 - Formula Support: Built-in support for common spreadsheet functions like SUM, AVG, MIN, MAX, and more.
+- Read and Write XLSX and CSV Files.
 - Native Calculation Engine: A custom-built engine written in C to ensure that calculations are processed quickly and accurately.
 - Cross-Platform Foundation: Developed using Kotlin Multiplatform, designed to share core logic across different operating systems while maintaining a native feel.
+- Light and Dark Mode
 
 ## Technical Highlights
 
